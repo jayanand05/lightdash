@@ -24,6 +24,7 @@ import {
 } from '@tabler/icons-react';
 import { capitalize } from 'lodash-es';
 import { FC, useState } from 'react';
+
 import { useTableStyles } from '../../../hooks/styles/useTableStyles';
 import { useCreateInviteLinkMutation } from '../../../hooks/useInviteLink';
 import {
