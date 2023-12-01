@@ -1,3 +1,59 @@
+# [0.887.0](https://github.com/lightdash/lightdash/compare/0.886.1...0.887.0) (2023-11-30)
+
+
+### Features
+
+* move limit and run query button to sidebar and show limit warning ([#8152](https://github.com/lightdash/lightdash/issues/8152)) ([fb67450](https://github.com/lightdash/lightdash/commit/fb67450df005c76659811ec4e99afc2cd9adb99c))
+
+## [0.886.1](https://github.com/lightdash/lightdash/compare/0.886.0...0.886.1) (2023-11-30)
+
+
+### Bug Fixes
+
+* remove extra tooltip on dashboard title ([#8161](https://github.com/lightdash/lightdash/issues/8161)) ([3b955f5](https://github.com/lightdash/lightdash/commit/3b955f59110e7c265f0fc6ebb65b0559ea58d8c1))
+
+# [0.886.0](https://github.com/lightdash/lightdash/compare/0.885.3...0.886.0) (2023-11-30)
+
+
+### Features
+
+* share date zoom url ([#8151](https://github.com/lightdash/lightdash/issues/8151)) ([e6abc3c](https://github.com/lightdash/lightdash/commit/e6abc3ce8cf01487a2569f0e922fc6fcdd07551d))
+
+## [0.885.3](https://github.com/lightdash/lightdash/compare/0.885.2...0.885.3) (2023-11-30)
+
+
+### Bug Fixes
+
+* metadata runquery ([#8156](https://github.com/lightdash/lightdash/issues/8156)) ([a67e0ff](https://github.com/lightdash/lightdash/commit/a67e0ff3f77037693a524213508ff02e316f4c06))
+
+## [0.885.2](https://github.com/lightdash/lightdash/compare/0.885.1...0.885.2) (2023-11-30)
+
+
+### Bug Fixes
+
+* custom dimension sort validation ([#8143](https://github.com/lightdash/lightdash/issues/8143)) ([38b5f72](https://github.com/lightdash/lightdash/commit/38b5f72eebde06a2a3d72c4418b4638107a5e604))
+
+## [0.885.1](https://github.com/lightdash/lightdash/compare/0.885.0...0.885.1) (2023-11-29)
+
+
+### Bug Fixes
+
+* filter autocomplete scroll ([#8148](https://github.com/lightdash/lightdash/issues/8148)) ([58faa5a](https://github.com/lightdash/lightdash/commit/58faa5ae6bfd9ca29db38a33c264f9b1e2e7d7bc))
+
+# [0.885.0](https://github.com/lightdash/lightdash/compare/0.884.1...0.885.0) (2023-11-29)
+
+
+### Features
+
+* add indicator when a chart tile has been date zoomed ([#8144](https://github.com/lightdash/lightdash/issues/8144)) ([e8ce66f](https://github.com/lightdash/lightdash/commit/e8ce66fc329e6cf32cb3e7ebe5b23a4ba9219b8d))
+
+## [0.884.1](https://github.com/lightdash/lightdash/compare/0.884.0...0.884.1) (2023-11-29)
+
+
+### Bug Fixes
+
+* base table match when finding explore by table name ([#8140](https://github.com/lightdash/lightdash/issues/8140)) ([eb4d41b](https://github.com/lightdash/lightdash/commit/eb4d41b523fa85604e1856feb3d81dc6d1a41c6c))
+
 # [0.884.0](https://github.com/lightdash/lightdash/compare/0.883.1...0.884.0) (2023-11-29)
 
 

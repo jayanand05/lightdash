@@ -1,6 +1,7 @@
 import {
     BinType,
     CompactOrAlias,
+    CompiledDimension,
     CompiledMetric,
     CompiledTableCalculation,
     CustomDimension,
@@ -53,7 +54,7 @@ export type MetricQuery = {
     additionalMetrics?: AdditionalMetric[]; // existing metric type
     customDimensions?: CustomDimension[];
     metadata?: {
-        hasADateDimension: string | CustomDimension;
+        hasADateDimension: Pick<CompiledDimension, 'label' | 'name'>;
     };
 };
 export type CompiledMetricQuery = MetricQuery & {
@@ -142,4 +143,5 @@ export type MetricQueryRequest = {
     additionalMetrics?: AdditionalMetric[]; // existing metric type
     csvLimit?: number;
     customDimensions?: CustomDimension[];
+    metadata?: MetricQuery['metadata'];
 };
