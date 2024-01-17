@@ -4,8 +4,6 @@ import {
 } from '@lightdash/common';
 import { Button, ButtonProps, Image } from '@mantine/core';
 import { FC } from 'react';
-import useToaster from '../../../hooks/toaster/useToaster';
-import { useFlashMessages } from '../../../hooks/useFlashMessages';
 import { useApp } from '../../../providers/AppProvider';
 
 type ThirdPartySignInButtonProps = {
@@ -33,16 +31,6 @@ const ThirdPartySignInButtonBase: FC<
     redirect,
     ...props
 }) => {
-    const { showToastError } = useToaster();
-    const flashMessages = useFlashMessages();
-
-    if (flashMessages.data?.error) {
-        showToastError({
-            title: 'Failed to authenticate',
-            subtitle: flashMessages.data.error.join('\n'),
-        });
-    }
-
     return (
         <Button
             variant="default"
@@ -123,7 +111,7 @@ export const ThirdPartySignInButton: FC<ThirdPartySignInButtonProps> = ({
                     redirect={redirect}
                     intent={intent}
                     inviteCode={inviteCode}
-                    providerName="Azure AD"
+                    providerName="Microsoft"
                     logo="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAApgAAAKYB3X3/OAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAACCSURBVEiJ7ZSxDcJAEATnTxd8CBlNkJK/CFwAETW4QV4EbsEd0ASBg5eOFlZIDizdxrs7J5205Xu/vYAJQVGsPecLwKL4gW5q+Z+abMdyABKQgASAR7GmmsfYVgcGyBm/Pt76OdvgczoDVY54CXm4iOoNKljImeM/OQEJOAig79jff9AUF4fE3EHkAAAAAElFTkSuQmCC"
                     {...props}
                 />

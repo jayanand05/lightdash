@@ -8,6 +8,7 @@ import { refreshHandler } from './handlers/dbt/refresh';
 import { dbtRunHandler } from './handlers/dbt/run';
 import { deployHandler } from './handlers/deploy';
 import { generateHandler } from './handlers/generate';
+import { generateExposuresHandler } from './handlers/generateExposures';
 import { login } from './handlers/login';
 import {
     previewHandler,
@@ -23,7 +24,7 @@ process.env.AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE = '1';
 
 const nodeVersion = require('parse-node-version')(process.version);
 
-const OPTIMIZED_NODE_VERSION = 18;
+const OPTIMIZED_NODE_VERSION = 20;
 
 const { version: VERSION } = require('../package.json');
 
@@ -327,6 +328,16 @@ program
         'Skip `dbt compile` and deploy from the existing ./target/manifest.json',
         false,
     )
+    .option(
+        '--skip-warehouse-catalog',
+        'Skip fetch warehouse catalog and use types in yml',
+        false,
+    )
+    .option(
+        '--use-dbt-list',
+        'Use `dbt list` instead of `dbt compile` to generate dbt manifest.json',
+        false,
+    )
     .action(previewHandler);
 
 program
@@ -376,6 +387,16 @@ program
     .option(
         '--skip-dbt-compile',
         'Skip `dbt compile` and deploy from the existing ./target/manifest.json',
+        false,
+    )
+    .option(
+        '--skip-warehouse-catalog',
+        'Skip fetch warehouse catalog and use types in yml',
+        false,
+    )
+    .option(
+        '--use-dbt-list',
+        'Use `dbt list` instead of `dbt compile` to generate dbt manifest.json',
         false,
     )
     .action(startPreviewHandler);
@@ -442,6 +463,16 @@ program
         'Skip `dbt compile` and deploy from the existing ./target/manifest.json',
         false,
     )
+    .option(
+        '--skip-warehouse-catalog',
+        'Skip fetch warehouse catalog and use types in yml',
+        false,
+    )
+    .option(
+        '--use-dbt-list',
+        'Use `dbt list` instead of `dbt compile` to generate dbt manifest.json',
+        false,
+    )
     .action(deployHandler);
 
 program
@@ -500,6 +531,16 @@ program
     .option(
         '--skip-dbt-compile',
         'Skip `dbt compile` and deploy from the existing ./target/manifest.json',
+        false,
+    )
+    .option(
+        '--skip-warehouse-catalog',
+        'Skip fetch warehouse catalog and use types in yml',
+        false,
+    )
+    .option(
+        '--use-dbt-list',
+        'Use `dbt list` instead of `dbt compile` to generate dbt manifest.json',
         false,
     )
     .action(validateHandler);
@@ -575,6 +616,35 @@ ${styles.bold('Examples:')}
     .option('--verbose', undefined, false)
 
     .action(generateHandler);
+
+program
+    .command('generate-exposures')
+    .description(
+        '[Experimental command] Generates a .yml file for Lightdash exposures',
+    )
+    .addHelpText(
+        'after',
+        `
+${styles.bold('Examples:')}
+  ${styles.title('⚡')}️lightdash ${styles.bold(
+            'generate-exposures',
+        )} ${styles.secondary(
+            '-- generates .yml file for all lightdash exposures',
+        )}
+`,
+    )
+    .option(
+        '--project-dir <path>',
+        'The directory of the dbt project',
+        defaultProjectDir,
+    )
+    .option('--verbose', undefined, false)
+    .option(
+        '--output <path>',
+        'The path where the output exposures YAML file will be written',
+        undefined,
+    )
+    .action(generateExposuresHandler);
 
 const errorHandler = (err: Error) => {
     console.error(styles.error(err.message || 'Error had no message'));

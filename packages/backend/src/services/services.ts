@@ -55,6 +55,7 @@ const encryptionService = new EncryptionService({ lightdashConfig });
 export const userService = new UserService({
     inviteLinkModel,
     userModel,
+    groupsModel,
     sessionModel,
     emailModel,
     openIdIdentityModel,
@@ -87,6 +88,7 @@ export const projectService = new ProjectService({
     userAttributesModel,
     s3CacheClient,
     analyticsModel,
+    dashboardModel,
 });
 
 export const shareService = new ShareService({
@@ -186,6 +188,7 @@ export const validationService = new ValidationService({
 
 export const groupService = new GroupsService({
     groupsModel,
+    projectModel,
 });
 
 export const sshKeyPairService = new SshKeyPairService({

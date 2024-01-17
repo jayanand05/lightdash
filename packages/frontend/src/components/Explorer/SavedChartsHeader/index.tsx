@@ -1,10 +1,22 @@
-import { Alert, Classes, Intent } from '@blueprintjs/core';
 import { subject } from '@casl/ability';
-import { ActionIcon, Box, Button, Flex, Menu, Tooltip } from '@mantine/core';
 import {
+    ActionIcon,
+    Alert,
+    Box,
+    Button,
+    Flex,
+    Group,
+    Menu,
+    Modal,
+    Title,
+    Tooltip,
+} from '@mantine/core';
+import {
+    IconAlertTriangle,
     IconArrowBack,
     IconCheck,
     IconChevronRight,
+    IconCircleFilled,
     IconCirclePlus,
     IconCirclesRelation,
     IconCopy,
@@ -48,10 +60,7 @@ import PageHeader from '../../common/Page/PageHeader';
 import {
     PageActionsContainer,
     PageDetailsContainer,
-    PageTitle,
     PageTitleAndDetailsContainer,
-    PageTitleContainer,
-    SeparatorDot,
 } from '../../common/PageHeader';
 import SpaceAndDashboardInfo from '../../common/PageHeader/SpaceAndDashboardInfo';
 import { UpdatedInfo } from '../../common/PageHeader/UpdatedInfo';
@@ -249,33 +258,48 @@ const SavedChartsHeader: FC = () => {
 
     return (
         <TrackSection name={SectionName.EXPLORER_TOP_BUTTONS}>
-            <Alert
-                isOpen={isSaveWarningModalOpen}
-                cancelButtonText="Stay"
-                confirmButtonText="Leave page"
-                intent={Intent.DANGER}
-                icon="warning-sign"
-                onCancel={() => setIsSaveWarningModalOpen(false)}
-                onConfirm={() => {
-                    history.block(() => {});
-                    if (blockedNavigationLocation)
-                        history.push(blockedNavigationLocation);
-                }}
+            <Modal
+                opened={isSaveWarningModalOpen}
+                withCloseButton={false}
+                closeOnClickOutside={false}
+                onClose={() => setIsSaveWarningModalOpen(false)}
             >
-                <p>
+                <Alert
+                    icon={<MantineIcon size="xl" icon={IconAlertTriangle} />}
+                    color="red"
+                >
                     You have unsaved changes to your chart! Are you sure you
-                    want to leave without saving?{' '}
-                </p>
-            </Alert>
+                    want to leave without saving?
+                </Alert>
+                <Group position="right" mt="sm">
+                    <Button
+                        color="dark"
+                        variant="outline"
+                        onClick={() => setIsSaveWarningModalOpen(false)}
+                    >
+                        Stay
+                    </Button>
+                    <Button
+                        color="red"
+                        onClick={() => {
+                            history.block(() => {});
+                            if (blockedNavigationLocation)
+                                history.push(blockedNavigationLocation);
+                        }}
+                    >
+                        Leave page
+                    </Button>
+                </Group>
+            </Modal>
 
             <PageHeader>
                 <PageTitleAndDetailsContainer>
                     {savedChart && (
                         <>
-                            <PageTitleContainer
-                                className={Classes.TEXT_OVERFLOW_ELLIPSIS}
-                            >
-                                <PageTitle>{savedChart.name}</PageTitle>
+                            <Group spacing="xs">
+                                <Title order={4} fw={600}>
+                                    {savedChart.name}
+                                </Title>
 
                                 <ResourceInfoPopup
                                     resourceUuid={savedChart.uuid}
@@ -302,12 +326,12 @@ const SavedChartsHeader: FC = () => {
                                         </ActionIcon>
                                     )}
                                 <ChartUpdateModal
-                                    isOpen={isRenamingChart}
+                                    opened={isRenamingChart}
                                     uuid={savedChart.uuid}
                                     onClose={() => setIsRenamingChart(false)}
                                     onConfirm={() => setIsRenamingChart(false)}
                                 />
-                            </PageTitleContainer>
+                            </Group>
 
                             <PageDetailsContainer>
                                 <UpdatedInfo
@@ -315,8 +339,11 @@ const SavedChartsHeader: FC = () => {
                                     user={savedChart.updatedByUser}
                                 />
 
-                                <SeparatorDot icon="dot" size={6} />
-
+                                <MantineIcon
+                                    icon={IconCircleFilled}
+                                    size={3}
+                                    style={{ margin: '0 11px' }}
+                                />
                                 <ViewInfo
                                     views={chartViewStats.data?.views}
                                     firstViewedAt={
@@ -324,8 +351,11 @@ const SavedChartsHeader: FC = () => {
                                     }
                                 />
 
-                                <SeparatorDot icon="dot" size={6} />
-
+                                <MantineIcon
+                                    icon={IconCircleFilled}
+                                    size={3}
+                                    style={{ margin: '0 11px' }}
+                                />
                                 <SpaceAndDashboardInfo
                                     space={{
                                         link: `/projects/${projectUuid}/spaces/${savedChart.spaceUuid}`,
@@ -670,7 +700,7 @@ const SavedChartsHeader: FC = () => {
             {isDeleteDialogOpen && savedChart?.uuid && (
                 <ChartDeleteModal
                     uuid={savedChart.uuid}
-                    isOpen={isDeleteDialogOpen}
+                    opened={isDeleteDialogOpen}
                     onClose={() => setIsDeleteDialogOpen(false)}
                     onConfirm={() => {
                         history.listen((location, action) => {

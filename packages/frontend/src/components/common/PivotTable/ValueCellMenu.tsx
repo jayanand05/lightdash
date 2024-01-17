@@ -1,11 +1,6 @@
 import { subject } from '@casl/ability';
-import {
-    Field,
-    hasCustomDimension,
-    ResultValue,
-    TableCalculation,
-} from '@lightdash/common';
-import { Menu, MenuProps } from '@mantine/core';
+import { hasCustomDimension, ItemsMap, ResultValue } from '@lightdash/common';
+import { Menu, MenuProps, Text } from '@mantine/core';
 import { IconArrowBarToDown, IconCopy, IconStack } from '@tabler/icons-react';
 import { FC } from 'react';
 import { useParams } from 'react-router-dom';
@@ -22,14 +17,14 @@ type ValueCellMenuProps = {
 
     rowIndex?: number;
     colIndex?: number;
-    item?: Field | TableCalculation | undefined;
+    item?: ItemsMap[string] | undefined;
     getUnderlyingFieldValues?: (
         colIndex: number,
         rowIndex: number,
     ) => Record<string, ResultValue>;
 } & Pick<MenuProps, 'opened' | 'onOpen' | 'onClose'>;
 
-const ValueCellMenu: FC<ValueCellMenuProps> = ({
+const ValueCellMenu: FC<React.PropsWithChildren<ValueCellMenuProps>> = ({
     children,
     rowIndex,
     colIndex,
@@ -146,9 +141,11 @@ const ValueCellMenu: FC<ValueCellMenuProps> = ({
             onOpen={onOpen}
             onClose={onClose}
             withinPortal
+            closeOnItemClick
+            closeOnEscape
             shadow="md"
-            position="bottom-end"
             radius={0}
+            position="bottom-end"
             offset={{
                 mainAxis: 0,
                 crossAxis: 0,
@@ -200,7 +197,10 @@ const ValueCellMenu: FC<ValueCellMenuProps> = ({
                                 }
                                 onClick={handleOpenDrillIntoModal}
                             >
-                                Drill into "{value.formatted}"
+                                Drill into{' '}
+                                <Text span fw={500}>
+                                    {value.formatted}
+                                </Text>
                             </Menu.Item>
                         ) : null}
                     </>

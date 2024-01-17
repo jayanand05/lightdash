@@ -1,10 +1,10 @@
-import { NonIdealState, Spinner } from '@blueprintjs/core';
 import { Stack } from '@mantine/core';
 import { FC } from 'react';
 import { Helmet } from 'react-helmet';
 import { Redirect, Route, Switch, useParams } from 'react-router-dom';
 import ErrorState from '../components/common/ErrorState';
 import PageBreadcrumbs from '../components/common/PageBreadcrumbs';
+import SuboptimalState from '../components/common/SuboptimalState/SuboptimalState';
 import DbtCloudSettings from '../components/DbtCloudSettings';
 import ProjectUserAccess from '../components/ProjectAccess';
 import { UpdateProjectConnection } from '../components/ProjectConnection';
@@ -19,16 +19,16 @@ const ProjectSettings: FC = () => {
         projectUuid: string;
     }>();
 
-    const { isLoading, data: project, error } = useProject(projectUuid);
+    const { isInitialLoading, data: project, error } = useProject(projectUuid);
 
     if (error) {
         return <ErrorState error={error.error} />;
     }
 
-    if (isLoading || !project) {
+    if (isInitialLoading || !project) {
         return (
             <div style={{ marginTop: '20px' }}>
-                <NonIdealState title="Loading project" icon={<Spinner />} />
+                <SuboptimalState title="Loading project" loading />
             </div>
         );
     }
@@ -103,9 +103,7 @@ const ProjectSettings: FC = () => {
                         <SettingsValidator projectUuid={projectUuid} />
                     </Route>
 
-                    <Redirect
-                        to={`/generalSettings/projectManagement/${projectUuid}/settings`}
-                    />
+                    <Redirect to={`/generalSettings/`} />
                 </Switch>
             </Stack>
         </>

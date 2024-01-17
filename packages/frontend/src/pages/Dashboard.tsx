@@ -1,4 +1,3 @@
-import { Alert, Intent, NonIdealState, Spinner } from '@blueprintjs/core';
 import {
     assertUnreachable,
     Dashboard as IDashboard,
@@ -6,8 +5,10 @@ import {
     DashboardTileTypes,
     isDashboardChartTileType,
 } from '@lightdash/common';
+import { Box, Button, Group, Modal, Stack, Text } from '@mantine/core';
 import { captureException, useProfiler } from '@sentry/react';
-
+import { IconAlertCircle } from '@tabler/icons-react';
+import { useFeatureFlagEnabled } from 'posthog-js/react';
 import React, {
     FC,
     memo,
@@ -18,15 +19,15 @@ import React, {
     useState,
 } from 'react';
 import { Layout, Responsive, WidthProvider } from 'react-grid-layout';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
-
-import { Box, Group } from '@mantine/core';
-import { useFeatureFlagEnabled } from 'posthog-js/react';
+import { useHistory, useParams } from 'react-router-dom';
 import { useIntersection } from 'react-use';
 import DashboardHeader from '../components/common/Dashboard/DashboardHeader';
 import ErrorState from '../components/common/ErrorState';
+import MantineIcon from '../components/common/MantineIcon';
 import DashboardDeleteModal from '../components/common/modal/DashboardDeleteModal';
+import { DashboardExportModal } from '../components/common/modal/DashboardExportModal';
 import Page from '../components/common/Page/Page';
+import SuboptimalState from '../components/common/SuboptimalState/SuboptimalState';
 import DashboardFilter from '../components/DashboardFilter';
 import ChartTile from '../components/DashboardTiles/DashboardChartTile';
 import LoomTile from '../components/DashboardTiles/DashboardLoomTile';
@@ -37,7 +38,6 @@ import { DateZoom } from '../features/dateZoom';
 import {
     appendNewTilesToBottom,
     useDuplicateDashboardMutation,
-    useExportDashboard,
     useMoveDashboardMutation,
     useUpdateDashboard,
 } from '../hooks/dashboard/useDashboard';
@@ -107,7 +107,7 @@ const GridTile: FC<
         }, index * 1000);
         return (
             <Box ref={ref} h="100%">
-                <TileBase isLoading={true} {...props} title={''} />
+                <TileBase isLoading {...props} title={''} />
             </Box>
         );
     }
@@ -134,7 +134,6 @@ const Dashboard: FC = () => {
     );
     const isLazyLoadEnabled =
         !!isLazyLoadFeatureFlagEnabled && !(window as any).Cypress; // disable lazy load for e2e test
-    const isDateZoomFeatureFlagEnabled = useFeatureFlagEnabled('date-zoom');
     const history = useHistory();
     const { projectUuid, dashboardUuid, mode } = useParams<{
         projectUuid: string;
@@ -189,8 +188,6 @@ const Dashboard: FC = () => {
     const { mutate: duplicateDashboard } = useDuplicateDashboardMutation({
         showRedirectButton: true,
     });
-    const { mutate: exportDashboard } = useExportDashboard();
-    const location = useLocation();
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
@@ -251,6 +248,8 @@ const Dashboard: FC = () => {
         clearIsEditingDashboardChart,
         showToastError,
     ]);
+
+    const [gridWidth, setGridWidth] = useState(0);
 
     useEffect(() => {
         if (isSuccess) {
@@ -409,9 +408,13 @@ const Dashboard: FC = () => {
         setIsDeleteModalOpen(true);
     };
 
+    const [isExportDashboardModalOpen, setIsExportDashboardModalOpen] =
+        useState(false);
+
     const handleExportDashboard = () => {
         if (!dashboard) return;
-        exportDashboard({ dashboard, queryFilters: location.search });
+
+        setIsExportDashboardModalOpen(true);
     };
 
     const [isSaveWarningModalOpen, setIsSaveWarningModalOpen] =
@@ -478,9 +481,9 @@ const Dashboard: FC = () => {
     }
     if (dashboard === undefined) {
         return (
-            <div style={{ marginTop: '20px' }}>
-                <NonIdealState title="Loading..." icon={<Spinner />} />
-            </div>
+            <Box mt="md">
+                <SuboptimalState title="Loading..." loading />
+            </Box>
         );
     }
     const dashboardChartTiles = dashboardTiles?.filter(
@@ -501,24 +504,45 @@ const Dashboard: FC = () => {
 
     return (
         <>
-            <Alert
-                isOpen={isSaveWarningModalOpen}
-                cancelButtonText="Stay"
-                confirmButtonText="Leave"
-                intent={Intent.DANGER}
-                icon="warning-sign"
-                onCancel={() => setIsSaveWarningModalOpen(false)}
-                onConfirm={() => {
-                    history.block(() => {});
-                    if (blockedNavigationLocation)
-                        history.push(blockedNavigationLocation);
-                }}
+            <Modal
+                opened={isSaveWarningModalOpen}
+                onClose={() => setIsSaveWarningModalOpen(false)}
+                title={null}
+                withCloseButton={false}
+                closeOnClickOutside={false}
             >
-                <p>
-                    You have unsaved changes to your dashboard! Are you sure you
-                    want to leave without saving?{' '}
-                </p>
-            </Alert>
+                <Stack>
+                    <Group noWrap spacing="xs">
+                        <MantineIcon
+                            icon={IconAlertCircle}
+                            color="red"
+                            size={50}
+                        />
+                        <Text fw={500}>
+                            You have unsaved changes to your dashboard! Are you
+                            sure you want to leave without saving?
+                        </Text>
+                    </Group>
+
+                    <Group position="right">
+                        <Button
+                            onClick={() => setIsSaveWarningModalOpen(false)}
+                        >
+                            Stay
+                        </Button>
+                        <Button
+                            color="red"
+                            onClick={() => {
+                                history.block(() => {});
+                                if (blockedNavigationLocation)
+                                    history.push(blockedNavigationLocation);
+                            }}
+                        >
+                            Leave
+                        </Button>
+                    </Group>
+                </Stack>
+            </Modal>
 
             <Page
                 withPaddedContent
@@ -576,15 +600,15 @@ const Dashboard: FC = () => {
                     {dashboardChartTiles && dashboardChartTiles.length > 0 && (
                         <DashboardFilter isEditMode={isEditMode} />
                     )}
-                    {hasDashboardTiles && isDateZoomFeatureFlagEnabled && (
-                        <DateZoom isEditMode={isEditMode} />
-                    )}
+                    {hasDashboardTiles && <DateZoom isEditMode={isEditMode} />}
                 </Group>
 
                 <ResponsiveGridLayout
                     {...getResponsiveGridLayoutProps()}
+                    className="react-grid-layout-dashboard"
                     onDragStop={handleUpdateTiles}
                     onResizeStop={handleUpdateTiles}
+                    onWidthChange={(cw) => setGridWidth(cw)}
                     layouts={layouts}
                 >
                     {sortedTiles?.map((tile, idx) => {
@@ -626,10 +650,19 @@ const Dashboard: FC = () => {
                         }}
                     />
                 )}
+                {isExportDashboardModalOpen && (
+                    <DashboardExportModal
+                        opened={isExportDashboardModalOpen}
+                        onClose={() => setIsExportDashboardModalOpen(false)}
+                        dashboard={dashboard}
+                        gridWidth={gridWidth}
+                    />
+                )}
             </Page>
         </>
     );
 };
+
 const DashboardPage: FC = () => {
     useProfiler('Dashboard');
     return (

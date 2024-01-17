@@ -1,4 +1,6 @@
+import { Explore } from '../types/explore';
 import {
+    CompiledDimension,
     CustomDimension,
     DimensionType,
     Field,
@@ -103,8 +105,30 @@ export const isDateItem = (
         return false;
     }
     if (isField(item) || isAdditionalMetric(item)) {
-        const dateTypes: string[] = [DimensionType.DATE, MetricType.DATE];
+        const dateTypes: string[] = [
+            DimensionType.DATE,
+            MetricType.DATE,
+            DimensionType.TIMESTAMP,
+            MetricType.TIMESTAMP,
+        ];
         return dateTypes.includes(item.type);
     }
     return true;
 };
+
+export const replaceDimensionInExplore = (
+    explore: Explore,
+    dimension: CompiledDimension,
+) => ({
+    ...explore,
+    tables: {
+        ...explore.tables,
+        [dimension.table]: {
+            ...explore.tables[dimension.table],
+            dimensions: {
+                ...explore.tables[dimension.table].dimensions,
+                [dimension.name]: dimension,
+            },
+        },
+    },
+});

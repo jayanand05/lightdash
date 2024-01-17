@@ -1,9 +1,11 @@
 import {
+    ApiCreateProjectGroupAccess,
     ApiErrorPayload,
     ApiGroupMembersResponse,
     ApiGroupResponse,
     ApiSuccessEmpty,
-    UpdateGroup,
+    ApiUpdateProjectGroupAccess,
+    UpdateGroupWithMembers,
 } from '@lightdash/common';
 import {
     Body,
@@ -14,13 +16,19 @@ import {
     OperationId,
     Patch,
     Path,
+    Post,
     Put,
+    Query,
     Request,
     Response,
     Route,
     Tags,
 } from '@tsoa/runtime';
 import express from 'express';
+import {
+    CreateDBProjectGroupAccess,
+    UpdateDBProjectGroupAccess,
+} from '../database/entities/projectGroupAccess';
 import { groupService } from '../services/services';
 import {
     allowApiKeyAuthentication,
@@ -35,6 +43,8 @@ export class GroupsController extends Controller {
     /**
      * Get group details
      * @param groupUuid unique id of the group
+     * @param includeMembers number of members to include
+     * @param offset offset of members to include
      */
     @Middlewares([allowApiKeyAuthentication, isAuthenticated])
     @Get('{groupUuid}')
@@ -42,11 +52,18 @@ export class GroupsController extends Controller {
     async getGroup(
         @Path() groupUuid: string,
         @Request() req: express.Request,
+        @Query() includeMembers?: number,
+        @Query() offset?: number,
     ): Promise<ApiGroupResponse> {
         this.setStatus(200);
         return {
             status: 'ok',
-            results: await groupService.get(req.user!, groupUuid),
+            results: await groupService.get(
+                req.user!,
+                groupUuid,
+                includeMembers,
+                offset,
+            ),
         };
     }
 
@@ -160,13 +177,96 @@ export class GroupsController extends Controller {
     async updateGroup(
         @Path() groupUuid: string,
         @Request() req: express.Request,
-        @Body() body: UpdateGroup,
+        @Body() body: UpdateGroupWithMembers,
     ): Promise<ApiGroupResponse> {
         const group = await groupService.update(req.user!, groupUuid, body);
         this.setStatus(200);
         return {
             status: 'ok',
             results: group,
+        };
+    }
+
+    /**
+     * Add project access to a group
+     */
+    @Middlewares([
+        allowApiKeyAuthentication,
+        isAuthenticated,
+        unauthorisedInDemo,
+    ])
+    @Post('{groupUuid}/projects/{projectUuid}')
+    @OperationId('addProjectAccessToGroup')
+    async addProjectAccessToGroup(
+        @Path() groupUuid: string,
+        @Path() projectUuid: string,
+        @Body() projectGroupAccess: Pick<CreateDBProjectGroupAccess, 'role'>,
+        @Request() req: express.Request,
+    ): Promise<ApiCreateProjectGroupAccess> {
+        const results = await groupService.addProjectAccess(req.user!, {
+            groupUuid,
+            projectUuid,
+            role: projectGroupAccess.role,
+        });
+        this.setStatus(200);
+        return {
+            status: 'ok',
+            results,
+        };
+    }
+
+    /**
+     * Update project access for a group
+     */
+    @Middlewares([
+        allowApiKeyAuthentication,
+        isAuthenticated,
+        unauthorisedInDemo,
+    ])
+    @Patch('{groupUuid}/projects/{projectUuid}')
+    @OperationId('updateProjectAccessForGroup')
+    async updateProjectAccessForGroup(
+        @Path() groupUuid: string,
+        @Path() projectUuid: string,
+        @Body()
+        projectGroupAccess: UpdateDBProjectGroupAccess,
+        @Request() req: express.Request,
+    ): Promise<ApiUpdateProjectGroupAccess> {
+        const results = await groupService.updateProjectAccess(
+            req.user!,
+            { groupUuid, projectUuid },
+            projectGroupAccess,
+        );
+        this.setStatus(200);
+        return {
+            status: 'ok',
+            results,
+        };
+    }
+
+    /**
+     * Remove project access from a group
+     */
+    @Middlewares([
+        allowApiKeyAuthentication,
+        isAuthenticated,
+        unauthorisedInDemo,
+    ])
+    @Delete('{groupUuid}/projects/{projectUuid}')
+    @OperationId('removeProjectAccessFromGroup')
+    async removeProjectAccessFromGroup(
+        @Path() groupUuid: string,
+        @Path() projectUuid: string,
+        @Request() req: express.Request,
+    ): Promise<ApiSuccessEmpty> {
+        const removed = await groupService.removeProjectAccess(req.user!, {
+            groupUuid,
+            projectUuid,
+        });
+        this.setStatus(removed ? 200 : 204);
+        return {
+            status: 'ok',
+            results: undefined,
         };
     }
 }

@@ -1,17 +1,12 @@
 import { subject } from '@casl/ability';
-import {
-    DashboardFilters,
-    hasCustomDimension,
-    ResultValue,
-} from '@lightdash/common';
-import { Menu } from '@mantine/core';
+import { hasCustomDimension, ResultValue } from '@lightdash/common';
+import { Menu, Text } from '@mantine/core';
 import { useClipboard } from '@mantine/hooks';
 import { IconArrowBarToDown, IconCopy, IconStack } from '@tabler/icons-react';
-import mapValues from 'lodash-es/mapValues';
+import mapValues from 'lodash/mapValues';
 import { FC, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import useToaster from '../../hooks/toaster/useToaster';
-import { useExplore } from '../../hooks/useExplore';
 import { useApp } from '../../providers/AppProvider';
 import { useTracking } from '../../providers/TrackingProvider';
 import { EventName } from '../../types/Events';
@@ -21,24 +16,15 @@ import { isBigNumberVisualizationConfig } from '../LightdashVisualization/Visual
 import { useVisualizationContext } from '../LightdashVisualization/VisualizationProvider';
 import { useMetricQueryDataContext } from '../MetricQueryData/MetricQueryDataProvider';
 
-export type BigNumberContextMenuProps = {
-    dashboardFilters?: DashboardFilters;
-};
-
-const BigNumberContextMenu: FC<BigNumberContextMenuProps> = ({
+const BigNumberContextMenu: FC<React.PropsWithChildren<{}>> = ({
     children,
-    dashboardFilters,
 }) => {
     const clipboard = useClipboard({ timeout: 200 });
     const { showToastSuccess } = useToaster();
-    const { resultsData, visualizationConfig } = useVisualizationContext();
-    const {
-        openUnderlyingDataModal,
-        openDrillDownModal,
-        tableName,
-        metricQuery,
-    } = useMetricQueryDataContext();
-    const { data: explore } = useExplore(tableName);
+    const { resultsData, visualizationConfig, itemsMap } =
+        useVisualizationContext();
+    const { openUnderlyingDataModal, openDrillDownModal, metricQuery } =
+        useMetricQueryDataContext();
 
     const { track } = useTracking();
     const { user } = useApp();
@@ -68,13 +54,10 @@ const BigNumberContextMenu: FC<BigNumberContextMenuProps> = ({
         }
     }, [fieldValues, visualizationConfig, isBigNumber]);
 
-    const handleCopy = () => {
-        if (value) {
-            clipboard.copy(value.formatted);
-            showToastSuccess({
-                title: 'Copied to clipboard!',
-            });
-        }
+    const handleCopyToClipboard = () => {
+        if (!value) return;
+        clipboard.copy(value.formatted);
+        showToastSuccess({ title: 'Copied to clipboard!' });
     };
 
     const handleViewUnderlyingData = useCallback(() => {
@@ -82,15 +65,11 @@ const BigNumberContextMenu: FC<BigNumberContextMenuProps> = ({
 
         const { chartConfig } = visualizationConfig;
 
-        if (
-            explore === undefined ||
-            chartConfig.selectedField === undefined ||
-            !value
-        ) {
+        if (!itemsMap || chartConfig.selectedField === undefined || !value) {
             return;
         }
 
-        openUnderlyingDataModal({ item, value, fieldValues, dashboardFilters });
+        openUnderlyingDataModal({ item, value, fieldValues });
         track({
             name: EventName.VIEW_UNDERLYING_DATA_CLICKED,
             properties: {
@@ -101,11 +80,10 @@ const BigNumberContextMenu: FC<BigNumberContextMenuProps> = ({
         });
     }, [
         projectUuid,
-        explore,
+        itemsMap,
         value,
         item,
         fieldValues,
-        dashboardFilters,
         track,
         openUnderlyingDataModal,
         user?.data?.organizationUuid,
@@ -117,7 +95,7 @@ const BigNumberContextMenu: FC<BigNumberContextMenuProps> = ({
     const handleOpenDrillIntoModal = useCallback(() => {
         if (!item) return;
 
-        openDrillDownModal({ item, fieldValues, dashboardFilters });
+        openDrillDownModal({ item, fieldValues });
         track({
             name: EventName.DRILL_BY_CLICKED,
             properties: {
@@ -129,7 +107,6 @@ const BigNumberContextMenu: FC<BigNumberContextMenuProps> = ({
     }, [
         item,
         fieldValues,
-        dashboardFilters,
         openDrillDownModal,
         projectUuid,
         track,
@@ -145,8 +122,10 @@ const BigNumberContextMenu: FC<BigNumberContextMenuProps> = ({
             withinPortal
             shadow="md"
             position="bottom"
-            radius="xs"
-            offset={-5}
+            closeOnItemClick
+            closeOnEscape
+            radius={0}
+            offset={-2}
         >
             <Menu.Target>{children}</Menu.Target>
 
@@ -154,7 +133,7 @@ const BigNumberContextMenu: FC<BigNumberContextMenuProps> = ({
                 {value && (
                     <Menu.Item
                         icon={<MantineIcon icon={IconCopy} />}
-                        onClick={handleCopy}
+                        onClick={handleCopyToClipboard}
                     >
                         Copy value
                     </Menu.Item>
@@ -189,7 +168,10 @@ const BigNumberContextMenu: FC<BigNumberContextMenuProps> = ({
                             icon={<MantineIcon icon={IconArrowBarToDown} />}
                             onClick={handleOpenDrillIntoModal}
                         >
-                            Drill into "{value.formatted}"
+                            Drill into{' '}
+                            <Text span fw={500}>
+                                {value.formatted}
+                            </Text>
                         </Menu.Item>
                     </Can>
                 )}

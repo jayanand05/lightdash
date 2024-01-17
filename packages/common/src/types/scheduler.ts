@@ -90,6 +90,7 @@ export type DashboardScheduler = SchedulerBase & {
     savedChartUuid: null;
     dashboardUuid: string;
     filters?: SchedulerFilterRule[];
+    customViewportWidth?: number;
 };
 
 export type Scheduler = ChartScheduler | DashboardScheduler;
@@ -156,7 +157,7 @@ export type UpdateSchedulerAndTargets = Pick<
     Scheduler,
     'schedulerUuid' | 'name' | 'message' | 'cron' | 'format' | 'options'
 > &
-    Pick<DashboardScheduler, 'filters'> & {
+    Pick<DashboardScheduler, 'filters' | 'customViewportWidth'> & {
         targets: Array<
             | CreateSchedulerTarget
             | UpdateSchedulerSlackTarget
@@ -245,6 +246,9 @@ export type ApiSchedulerLogsResponse = {
 };
 export type ApiTestSchedulerResponse = {
     status: 'ok';
+    results: {
+        jobId: string;
+    };
 };
 
 // Scheduler task types
@@ -261,7 +265,7 @@ export const hasSchedulerUuid = (
 export const getSchedulerUuid = (
     data: ScheduledDeliveryPayload,
 ): string | undefined =>
-    isCreateScheduler(data) ? undefined : data.schedulerUuid;
+    'schedulerUuid' in data ? data.schedulerUuid : undefined;
 
 export enum LightdashPage {
     DASHBOARD = 'dashboard',
@@ -343,6 +347,7 @@ export type CompileProjectPayload = {
     projectUuid: string;
     requestMethod: string;
     jobUuid: string;
+    isPreview: boolean;
 };
 
 export type ValidateProjectPayload = {
@@ -363,6 +368,7 @@ export type ApiJobScheduledResponse = {
 export type ApiJobStatusResponse = {
     status: 'ok';
     results: {
-        status: string;
+        status: SchedulerJobStatus;
+        details: Record<string, any> | null;
     };
 };

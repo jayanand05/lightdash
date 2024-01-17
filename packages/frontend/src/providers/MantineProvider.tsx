@@ -1,9 +1,10 @@
 import { MantineProvider as MantineProviderBase } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
 import { FC } from 'react';
 
 import { getMantineThemeOverride } from '../mantineTheme';
 
-const MantineProvider: FC = ({ children }) => {
+const MantineProvider: FC<React.PropsWithChildren<{}>> = ({ children }) => {
     return (
         <MantineProviderBase
             withGlobalStyles
@@ -12,6 +13,8 @@ const MantineProvider: FC = ({ children }) => {
             theme={getMantineThemeOverride()}
         >
             {children}
+
+            <Notifications />
         </MantineProviderBase>
     );
 };

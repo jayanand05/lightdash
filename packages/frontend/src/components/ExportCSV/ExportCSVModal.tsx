@@ -10,6 +10,7 @@ type ExportCSVModalProps = ModalProps &
     };
 
 const ExportCSVModal: FC<ExportCSVModalProps> = ({
+    projectUuid,
     onConfirm,
     rows,
     getCsvLink,
@@ -34,11 +35,19 @@ const ExportCSVModal: FC<ExportCSVModalProps> = ({
             {...modalProps}
         >
             <ExportCSV
+                projectUuid={projectUuid}
                 rows={rows}
                 getCsvLink={getCsvLink}
                 isDialogBody
                 renderDialogActions={({ onExport, isExporting }) => (
-                    <Group>
+                    <Group
+                        position="right"
+                        sx={(theme) => ({
+                            borderTop: `1px solid ${theme.colors.gray[4]}`,
+                            bottom: 0,
+                            padding: theme.spacing.md,
+                        })}
+                    >
                         <Button variant="outline" onClick={modalProps.onClose}>
                             Cancel
                         </Button>

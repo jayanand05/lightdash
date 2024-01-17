@@ -6,7 +6,7 @@ import {
     wrapResourceView,
 } from '@lightdash/common';
 import { Button, Group, Stack } from '@mantine/core';
-import { IconFolders, IconPlus } from '@tabler/icons-react';
+import { IconFolderPlus, IconFolders, IconPlus } from '@tabler/icons-react';
 import { FC, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import LoadingState from '../components/common/LoadingState';
@@ -27,12 +27,10 @@ import { PinnedItemsProvider } from '../providers/PinnedItemsProvider';
 const Spaces: FC = () => {
     const { projectUuid } = useParams<{ projectUuid: string }>();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
-    const { data: spaces = [], isLoading: spaceIsLoading } = useSpaceSummaries(
-        projectUuid,
-        true,
-    );
+    const { data: spaces = [], isInitialLoading: spaceIsLoading } =
+        useSpaceSummaries(projectUuid, true);
     const project = useProject(projectUuid);
-    const isLoading = spaceIsLoading || project.isLoading;
+    const isLoading = spaceIsLoading || project.isInitialLoading;
 
     const { user, health } = useApp();
 
@@ -156,7 +154,7 @@ const Spaces: FC = () => {
                     actionType={ActionType.CREATE}
                     title="Create new space"
                     confirmButtonLabel="Create"
-                    icon="folder-close"
+                    icon={IconFolderPlus}
                     onClose={() => setIsCreateModalOpen(false)}
                 />
             )}

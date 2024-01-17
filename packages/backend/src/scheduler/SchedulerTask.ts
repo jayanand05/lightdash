@@ -55,6 +55,7 @@ import {
     getChartAndDashboardBlocks,
     getChartCsvResultsBlocks,
     getDashboardCsvResultsBlocks,
+    getNotificationChannelErrorBlocks,
 } from '../clients/Slack/SlackMessageBlocks';
 import { lightdashConfig } from '../config/lightdashConfig';
 import Logger from '../logging/logger';
@@ -166,22 +167,42 @@ export const getNotificationPageData = async (
 
     switch (format) {
         case SchedulerFormat.IMAGE:
-            const imageId = `slack-image-notification-${nanoid()}`;
-            const imageOptions = isSchedulerImageOptions(scheduler.options)
-                ? scheduler.options
-                : undefined;
-            const unfurlImage = await unfurlService.unfurlImage(
-                minimalUrl,
-                pageType,
-                imageId,
-                userUuid,
-                imageOptions?.withPdf,
-            );
-            if (unfurlImage.imageUrl === undefined) {
-                throw new Error('Unable to unfurl image');
+            try {
+                const imageId = `slack-image-notification-${nanoid()}`;
+                const imageOptions = isSchedulerImageOptions(scheduler.options)
+                    ? scheduler.options
+                    : undefined;
+                const unfurlImage = await unfurlService.unfurlImage({
+                    url: minimalUrl,
+                    lightdashPage: pageType,
+                    imageId,
+                    authUserUuid: userUuid,
+                    withPdf: imageOptions?.withPdf,
+                    gridWidth:
+                        isDashboardScheduler(scheduler) &&
+                        scheduler.customViewportWidth
+                            ? scheduler.customViewportWidth
+                            : undefined,
+                });
+                if (unfurlImage.imageUrl === undefined) {
+                    throw new Error('Unable to unfurl image');
+                }
+                pdfFile = unfurlImage.pdfPath;
+                imageUrl = unfurlImage.imageUrl;
+            } catch (error) {
+                if (slackClient.isEnabled) {
+                    await slackClient.postMessageToNotificationChannel({
+                        organizationUuid,
+                        text: `Error sending Scheduled Delivery: ${scheduler.name}`,
+                        blocks: getNotificationChannelErrorBlocks(
+                            scheduler.name,
+                            error,
+                        ),
+                    });
+                }
+
+                throw error;
             }
-            pdfFile = unfurlImage.pdfPath;
-            imageUrl = unfurlImage.imageUrl;
             break;
         case SchedulerFormat.GSHEETS:
             // We don't generate CSV files for Google sheets on handleNotification task,
@@ -245,6 +266,17 @@ export const getNotificationPageData = async (
                 }
             } catch (e) {
                 Logger.error(`Unable to download CSV on scheduled task: ${e}`);
+
+                if (slackClient.isEnabled) {
+                    await slackClient.postMessageToNotificationChannel({
+                        organizationUuid,
+                        text: `Error sending Scheduled Delivery: ${scheduler.name}`,
+                        blocks: getNotificationChannelErrorBlocks(
+                            scheduler.name,
+                            e,
+                        ),
+                    });
+                }
 
                 analytics.track({
                     event: 'download_results.error',
@@ -480,13 +512,14 @@ export const testAndCompileProject = async (
             details: {},
             status: SchedulerJobStatus.COMPLETED,
         });
-
-        schedulerClient.generateValidation({
-            userUuid: payload.createdByUserUuid,
-            projectUuid: payload.projectUuid,
-            context: 'test_and_compile',
-            organizationUuid: user.organizationUuid,
-        });
+        if (process.env.IS_PULL_REQUEST !== 'true' && !payload.isPreview) {
+            schedulerClient.generateValidation({
+                userUuid: payload.createdByUserUuid,
+                projectUuid: payload.projectUuid,
+                context: 'test_and_compile',
+                organizationUuid: user.organizationUuid,
+            });
+        }
     } catch (e) {
         await schedulerService.logSchedulerJob({
             ...baseLog,
@@ -529,13 +562,14 @@ export const compileProject = async (
             details: {},
             status: SchedulerJobStatus.COMPLETED,
         });
-
-        schedulerClient.generateValidation({
-            projectUuid: payload.projectUuid,
-            context: 'dbt_refresh',
-            userUuid: payload.createdByUserUuid,
-            organizationUuid: user.organizationUuid,
-        });
+        if (process.env.IS_PULL_REQUEST !== 'true' && !payload.isPreview) {
+            schedulerClient.generateValidation({
+                projectUuid: payload.projectUuid,
+                context: 'dbt_refresh',
+                userUuid: payload.createdByUserUuid,
+                organizationUuid: user.organizationUuid,
+            });
+        }
     } catch (e) {
         await schedulerService.logSchedulerJob({
             ...baseLog,

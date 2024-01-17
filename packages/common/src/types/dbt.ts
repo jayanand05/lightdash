@@ -28,6 +28,7 @@ export enum SupportedDbtAdapter {
 
 export type DbtNodeConfig = {
     materialized: string;
+    snowflake_warehouse: string;
 };
 export type DbtNode = {
     unique_id: string;
@@ -73,6 +74,9 @@ type DbtModelJoin = {
 type DbtColumnMetadata = DbtColumnLightdashConfig & {};
 type DbtColumnLightdashConfig = {
     dimension?: DbtColumnLightdashDimension;
+    additional_dimensions?: {
+        [subDimensionName: string]: DbtColumnLightdashAdditionalDimension;
+    };
     metrics?: { [metricName: string]: DbtColumnLightdashMetric };
 };
 
@@ -89,8 +93,13 @@ type DbtColumnLightdashDimension = {
     format?: Format;
     group_label?: string;
     urls?: FieldUrl[];
-    required_attributes?: Record<string, string>;
+    required_attributes?: Record<string, string | string[]>;
 };
+
+type DbtColumnLightdashAdditionalDimension = Omit<
+    DbtColumnLightdashDimension,
+    'name' | 'time_intervals'
+>;
 
 export type DbtColumnLightdashMetric = {
     label?: string;
@@ -422,3 +431,25 @@ export enum DbtManifestVersion {
     V10 = 'v10',
     V11 = 'v11',
 }
+
+export enum DbtExposureType {
+    DASHBOARD = 'dashboard',
+    NOTEBOOK = 'notebook',
+    ANALYSIS = 'analysis',
+    ML = 'ml',
+    APPLICATION = 'application',
+}
+
+export type DbtExposure = {
+    name: string; // a unique exposure name written in snake case
+    owner: {
+        name: string;
+        email: string;
+    };
+    type: DbtExposureType;
+    dependsOn: string[]; // list of refs to models. eg: ref('fct_orders')
+    label?: string;
+    description?: string;
+    url?: string;
+    tags?: string[];
+};

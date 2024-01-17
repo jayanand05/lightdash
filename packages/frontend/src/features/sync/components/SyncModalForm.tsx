@@ -1,4 +1,3 @@
-import { NonIdealState, Spinner } from '@blueprintjs/core';
 import {
     CreateSchedulerAndTargetsWithoutIds,
     SchedulerFormat,
@@ -18,6 +17,7 @@ import { FC, useEffect } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import ErrorState from '../../../components/common/ErrorState';
 import MantineIcon from '../../../components/common/MantineIcon';
+import SuboptimalState from '../../../components/common/SuboptimalState/SuboptimalState';
 import CronInput from '../../../components/ReactHookForm/CronInput';
 import { useChartSchedulerCreateMutation } from '../../../features/scheduler/hooks/useChartSchedulers';
 import { useScheduler } from '../../../features/scheduler/hooks/useScheduler';
@@ -32,7 +32,7 @@ export const SyncModalForm: FC<{ chartUuid: string }> = ({ chartUuid }) => {
     const isEditing = action === SyncModalAction.EDIT;
     const {
         data: schedulerData,
-        isLoading: isLoadingSchedulerData,
+        isInitialLoading: isLoadingSchedulerData,
         isError: isSchedulerError,
         error: schedulerError,
     } = useScheduler(currentSchedulerUuid ?? '', {
@@ -109,13 +109,14 @@ export const SyncModalForm: FC<{ chartUuid: string }> = ({ chartUuid }) => {
 
     const hasSetGoogleSheet = methods.watch('options.gdriveId') !== '';
 
-    if (isEditing && (isLoadingSchedulerData || isSchedulerError)) {
-        return isLoadingSchedulerData ? (
-            <NonIdealState title="Loading Sync" icon={<Spinner />} />
-        ) : (
-            <ErrorState error={schedulerError.error} />
-        );
+    if (isEditing && isLoadingSchedulerData) {
+        return <SuboptimalState title="Loading Sync" loading />;
     }
+
+    if (isEditing && isSchedulerError) {
+        return <ErrorState error={schedulerError.error} />;
+    }
+
     return (
         <FormProvider {...methods}>
             <form onSubmit={methods.handleSubmit(handleSubmit)}>

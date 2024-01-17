@@ -6,12 +6,13 @@ import {
     ChartVersionSummary,
     CreateSavedChart,
     CreateSavedChartVersion,
-    CustomDimension,
     DBFieldTypes,
+    ECHARTS_DEFAULT_COLORS,
     getChartKind,
     getChartType,
     getCustomDimensionId,
     isFormat,
+    LightdashUser,
     NotFoundError,
     Organization,
     Project,
@@ -38,7 +39,6 @@ import {
     CreateDbSavedChartVersionSort,
     DBFilteredAdditionalMetrics,
     DbSavedChartAdditionalMetricInsert,
-    DbSavedChartCustomDimension,
     DbSavedChartCustomDimensionInsert,
     DbSavedChartTableCalculationInsert,
     InsertChart,
@@ -433,6 +433,21 @@ export class SavedChartModel {
             })
             .orderBy(`${SavedChartVersionsTableName}.created_at`, 'asc');
 
+        if (chartVersions.length === 1) {
+            const oldVersions = await this.getVersionSummaryQuery()
+                .where(`${SavedChartsTableName}.saved_query_uuid`, chartUuid)
+                .andWhereNot(
+                    `${SavedChartVersionsTableName}.saved_queries_version_uuid`,
+                    chartVersions[0].saved_queries_version_uuid,
+                )
+                .orderBy(`${SavedChartVersionsTableName}.created_at`, 'asc')
+                .limit(1);
+
+            return [...chartVersions, ...oldVersions].map(
+                SavedChartModel.convertVersionSummary,
+            );
+        }
+
         return chartVersions.map(SavedChartModel.convertVersionSummary);
     }
 
@@ -588,6 +603,7 @@ export class SavedChartModel {
                         space_uuid: string;
                         spaceName: string;
                         dashboardName: string | null;
+                        chart_colors: string[] | null;
                     })[]
                 >([
                     `${ProjectTableName}.project_uuid`,
@@ -606,6 +622,7 @@ export class SavedChartModel {
                     'saved_queries_versions.chart_config',
                     'saved_queries_versions.pivot_dimensions',
                     `${OrganizationTableName}.organization_uuid`,
+                    `${OrganizationTableName}.chart_colors`,
                     `${UserTableName}.user_uuid`,
                     `${UserTableName}.first_name`,
                     `${UserTableName}.last_name`,
@@ -767,6 +784,7 @@ export class SavedChartModel {
                     lastName: savedQuery.last_name,
                 },
                 metricQuery: {
+                    exploreName: savedQuery.explore_name,
                     dimensions,
                     metrics,
                     filters: savedQuery.filters,
@@ -809,6 +827,7 @@ export class SavedChartModel {
                 pinnedListOrder: null,
                 dashboardUuid: savedQuery.dashboard_uuid,
                 dashboardName: savedQuery.dashboardName,
+                colorPalette: savedQuery.chart_colors ?? ECHARTS_DEFAULT_COLORS,
             };
         } finally {
             span?.finish();
@@ -983,5 +1002,64 @@ export class SavedChartModel {
             throw new NotFoundError('Saved queries not found');
         }
         return charts;
+    }
+
+    async findInfoForDbtExposures(
+        projectUuid: string,
+    ): Promise<
+        Array<
+            Pick<SavedChart, 'uuid' | 'name' | 'description' | 'tableName'> &
+                Pick<LightdashUser, 'firstName' | 'lastName'>
+        >
+    > {
+        const getLatestQueryVersionSubQuery = this.database(
+            'saved_queries_versions',
+        )
+            .select('saved_query_id', 'explore_name', 'updated_by_user_uuid')
+            .max('created_at as latest')
+            .groupBy('saved_query_id', 'explore_name', 'updated_by_user_uuid');
+
+        return this.database('saved_queries')
+            .select({
+                uuid: 'saved_queries.saved_query_uuid',
+                name: 'saved_queries.name',
+                description: 'saved_queries.description',
+                tableName: 'latest_saved_query.explore_name',
+                firstName: `${UserTableName}.first_name`,
+                lastName: `${UserTableName}.last_name`,
+            })
+            .innerJoin(
+                getLatestQueryVersionSubQuery.as('latest_saved_query'),
+                function latestSavedQueryJoin() {
+                    this.on(
+                        `${SavedChartsTableName}.saved_query_id`,
+                        '=',
+                        'latest_saved_query.saved_query_id',
+                    );
+                },
+            )
+            .leftJoin(
+                DashboardsTableName,
+                `${DashboardsTableName}.dashboard_uuid`,
+                `${SavedChartsTableName}.dashboard_uuid`,
+            )
+            .innerJoin(SpaceTableName, function spaceJoin() {
+                this.on(
+                    `${SpaceTableName}.space_id`,
+                    '=',
+                    `${DashboardsTableName}.space_id`,
+                ).orOn(
+                    `${SpaceTableName}.space_id`,
+                    '=',
+                    `${SavedChartsTableName}.space_id`,
+                );
+            })
+            .leftJoin('projects', 'spaces.project_id', 'projects.project_id')
+            .leftJoin(
+                UserTableName,
+                `latest_saved_query.updated_by_user_uuid`,
+                `${UserTableName}.user_uuid`,
+            )
+            .where('projects.project_uuid', projectUuid);
     }
 }

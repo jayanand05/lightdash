@@ -3,16 +3,15 @@ import {
     ApiError,
     CalculateTotalFromQuery,
     DashboardFilters,
-    Field,
     fieldId as getFieldId,
     isField,
     isMetric,
+    ItemsMap,
     MetricQuery,
     MetricQueryRequest,
-    TableCalculation,
 } from '@lightdash/common';
+import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { useQuery } from 'react-query';
 import { useParams } from 'react-router-dom';
 import { lightdashApi } from '../api';
 import {
@@ -65,7 +64,7 @@ const calculateTotalFromSavedChart = async (
 
 const getCalculationColumnFields = (
     selectedItemIds: string[],
-    itemsMap: Record<string, Field | TableCalculation>,
+    itemsMap: ItemsMap,
 ) => {
     //This method will return the metric ids that need to be calculated in the backend
 
@@ -96,12 +95,12 @@ export const useCalculateTotal = ({
     savedChartUuid?: string;
     dashboardFilters?: DashboardFilters;
     invalidateCache?: boolean;
-    itemsMap: Record<string, TableCalculation | Field>;
+    itemsMap: ItemsMap | undefined;
     fieldIds?: string[];
     showColumnCalculation?: boolean;
 }) => {
     const metricsWithTotals = useMemo(() => {
-        if (!fieldIds) return [];
+        if (!fieldIds || !itemsMap) return [];
         if (showColumnCalculation === false) return [];
         return getCalculationColumnFields(fieldIds, itemsMap);
     }, [fieldIds, itemsMap, showColumnCalculation]);

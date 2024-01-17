@@ -6,8 +6,8 @@ import {
 } from '@lightdash/common';
 import { Button, Stack } from '@mantine/core';
 import { IconArrowLeft, IconFileTypeCsv } from '@tabler/icons-react';
+import { useQuery } from '@tanstack/react-query';
 import { FC, memo, useState } from 'react';
-import { useQuery } from 'react-query';
 import { ExportToGoogleSheet } from '../../features/export';
 import useHealth from '../../hooks/health/useHealth';
 import MantineIcon from '../common/MantineIcon';
@@ -17,7 +17,7 @@ const ExportSelector: FC<
     ExportCSVProps & {
         getGsheetLink?: () => Promise<ApiScheduledDownloadCsv>;
     }
-> = memo(({ rows, getCsvLink, getGsheetLink }) => {
+> = memo(({ projectUuid, rows, getCsvLink, getGsheetLink }) => {
     const health = useHealth();
     const hasGoogleDrive =
         health.data?.auth.google.oauth2ClientId !== undefined &&
@@ -38,13 +38,18 @@ const ExportSelector: FC<
                 <Button
                     color="gray.6"
                     size="xs"
+                    mb="xs"
                     leftIcon={<IconArrowLeft size="16" />}
                     variant="subtle"
                     onClick={() => setExportType(undefined)}
                 >
                     Back to export selector
                 </Button>
-                <ExportCSV rows={rows} getCsvLink={getCsvLink} />
+                <ExportCSV
+                    rows={rows}
+                    getCsvLink={getCsvLink}
+                    projectUuid={projectUuid}
+                />
             </>
         );
     } else if (hasGoogleDrive && getGsheetLink) {
@@ -65,7 +70,13 @@ const ExportSelector: FC<
         );
     }
 
-    return <ExportCSV rows={rows} getCsvLink={getCsvLink} />;
+    return (
+        <ExportCSV
+            rows={rows}
+            getCsvLink={getCsvLink}
+            projectUuid={projectUuid}
+        />
+    );
 });
 
 export default ExportSelector;

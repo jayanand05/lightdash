@@ -7,10 +7,12 @@ import {
     isSupportedDbtAdapter,
     isWeekDay,
     ParseError,
+    WarehouseCatalog,
 } from '@lightdash/common';
 import { warehouseClientFromCredentials } from '@lightdash/warehouses';
 import inquirer from 'inquirer';
 import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import { LightdashAnalytics } from '../analytics/analytics';
 import { getDbtContext } from '../dbt/context';
 import { getDbtManifest, loadManifest } from '../dbt/manifest';
@@ -22,7 +24,7 @@ import {
 import { validateDbtModel } from '../dbt/validation';
 import GlobalState from '../globalState';
 import * as styles from '../styles';
-import { dbtCompile, DbtCompileOptions } from './dbt/compile';
+import { dbtCompile, DbtCompileOptions, dbtList } from './dbt/compile';
 import { getDbtVersion, isSupportedDbtVersion } from './dbt/getDbtVersion';
 
 export type CompileHandlerOptions = DbtCompileOptions & {
@@ -39,10 +41,15 @@ export const compile = async (options: CompileHandlerOptions) => {
     const dbtVersion = await getDbtVersion();
     const manifestVersion = await getDbtManifest();
     GlobalState.debug(`> dbt version ${dbtVersion}`);
+    const executionId = uuidv4();
     await LightdashAnalytics.track({
         event: 'compile.started',
         properties: {
+            executionId,
             dbtVersion,
+            useDbtList: !!options.useDbtList,
+            skipWarehouseCatalog: !!options.skipWarehouseCatalog,
+            skipDbtCompile: !!options.skipDbtCompile,
         },
     });
 
@@ -68,8 +75,13 @@ export const compile = async (options: CompileHandlerOptions) => {
     }
 
     // Skipping assumes manifest.json already exists.
-    if (!options.skipDbtCompile) {
+    let compiledModelIds: string[] | undefined;
+    if (options.useDbtList) {
+        compiledModelIds = await dbtList(options);
+    } else if (!options.skipDbtCompile) {
         await dbtCompile(options);
+    } else {
+        GlobalState.debug('> Skipping dbt compile');
     }
 
     const absoluteProjectPath = path.resolve(options.projectDir);
@@ -97,7 +109,13 @@ export const compile = async (options: CompileHandlerOptions) => {
             : undefined,
     });
     const manifest = await loadManifest({ targetDir: context.targetDir });
-    const models = getModelsFromManifest(manifest);
+    const models = getModelsFromManifest(manifest).filter((model) => {
+        if (compiledModelIds) {
+            return compiledModelIds.includes(model.unique_id);
+        }
+        // in case they skipped the compile step, we check if the models are compiled
+        return model.compiled;
+    });
 
     const adapterType = manifest.metadata.adapter_type;
 
@@ -118,10 +136,16 @@ ${errors.join('')}`),
         );
     }
 
-    // Ideally we'd skip this potentially expensive step
-    const catalog = await warehouseClient.getCatalog(
-        getSchemaStructureFromDbtModels(validModels),
-    );
+    // Skipping assumes yml has the field types.
+    let catalog: WarehouseCatalog = {};
+    if (!options.skipWarehouseCatalog) {
+        GlobalState.debug('> Fetching warehouse catalog');
+        catalog = await warehouseClient.getCatalog(
+            getSchemaStructureFromDbtModels(validModels),
+        );
+    } else {
+        GlobalState.debug('> Skipping warehouse catalog');
+    }
 
     const validModelsWithTypes = attachTypesToModels(
         validModels,
@@ -133,6 +157,7 @@ ${errors.join('')}`),
         await LightdashAnalytics.track({
             event: 'compile.error',
             properties: {
+                executionId,
                 dbtVersion,
                 error: `Dbt adapter ${manifest.metadata.adapter_type} is not supported`,
             },
@@ -145,7 +170,6 @@ ${errors.join('')}`),
     GlobalState.debug(
         `> Converting explores with adapter: ${manifest.metadata.adapter_type}`,
     );
-
     const validExplores = await convertExplores(
         validModelsWithTypes,
         false,
@@ -181,6 +205,7 @@ ${errors.join('')}`),
     await LightdashAnalytics.track({
         event: 'compile.completed',
         properties: {
+            executionId,
             explores: explores.length,
             errors,
             dbtMetrics: Object.values(manifest.metrics).length,

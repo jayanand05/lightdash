@@ -239,7 +239,7 @@ LIGHTDASH_CONFIG_FILE=/*path*/*to*/lightdash/lightdash.yml
 
 ```shell
 # Create docker containers
-Note: before the next step make sure your docker has 4GB of memory ( Docker -> settings -> resources ) you should be able to manipulate the values here.
+# Note: before the next step make sure your docker has 4GB of memory ( Docker -> settings -> resources ) you should be able to manipulate the values here.
 
 docker compose -p lightdash-app -f docker/docker-compose.dev.yml --env-file .env.development.local up --detach --remove-orphans
 ```
@@ -297,12 +297,12 @@ docker compose -p lightdash-app -f docker/docker-compose.dev.yml --env-file .env
 
 #### Setup Development Environment without Docker
 
-To setup Development Environment without Docker you need following pre-requisits before running Lightdash:
+To setup Development Environment without Docker you need following pre-requisites before running Lightdash:
 
--   node 14.x <= version <= 16.x
+-   node >= v18.x (20 is preferred)
 -   yarn
 -   postgres
--   dbt
+-   dbt 1.4.x or 1.5.x
 
 eg. on MacOS you can follow this instructions:
 
@@ -316,16 +316,16 @@ brew install nvm
 
 #3 install specified node version using NVM (https://github.com/nvm-sh/nvm)
 
-nvm install v18.18.0
-nvm alias default v18.18.0
+nvm install v20.8.0
+nvm alias default v20.8.0
 
 #4 install postgres (https://wiki.postgresql.org/wiki/Homebrew)
 brew install postgresql@14
 brew services start postgresql@14
 
 #5 install dbt (https://docs.getdbt.com/dbt-cli/install/homebrew)
-brew tap dbt-labs/dbt
-brew install dbt-postgres
+brew tap dbt-labs/dbt@1.4.9
+brew install dbt-postgres@1.4.9
 
 #6 clone the repo and open it in your IDE
 git clone https://github.com/lightdash/lightdash.git

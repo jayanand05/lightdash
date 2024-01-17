@@ -1,12 +1,3 @@
-import {
-    convertAdditionalMetric,
-    fieldId,
-    getDimensions,
-    getMetrics,
-    isField,
-    Metric,
-    TableCalculation,
-} from '@lightdash/common';
 import { Tabs } from '@mantine/core';
 import { FC, memo, useMemo } from 'react';
 import { useVisualizationContext } from '../../LightdashVisualization/VisualizationProvider';
@@ -17,55 +8,9 @@ import LegendPanel from './Legend';
 import SeriesTab from './Series';
 
 const ChartConfigTabs: FC = memo(() => {
-    const { explore, resultsData } = useVisualizationContext();
-    const dimensionsInMetricQuery = explore
-        ? getDimensions(explore).filter((field) =>
-              resultsData?.metricQuery.dimensions.includes(fieldId(field)),
-          )
-        : [];
+    const { itemsMap } = useVisualizationContext();
 
-    const customDimensions = resultsData?.metricQuery.customDimensions || [];
-
-    const metricsAndTableCalculations: Array<Metric | TableCalculation> =
-        useMemo(() => {
-            return explore
-                ? [
-                      ...getMetrics(explore),
-                      ...(
-                          resultsData?.metricQuery.additionalMetrics || []
-                      ).reduce<Metric[]>((acc, additionalMetric) => {
-                          const table = explore.tables[additionalMetric.table];
-                          if (table) {
-                              const metric = convertAdditionalMetric({
-                                  additionalMetric,
-                                  table,
-                              });
-                              return [...acc, metric];
-                          }
-                          return acc;
-                      }, []),
-                      ...(resultsData?.metricQuery.tableCalculations || []),
-                  ].filter((item) => {
-                      if (isField(item)) {
-                          return resultsData?.metricQuery.metrics.includes(
-                              fieldId(item),
-                          );
-                      }
-                      return true;
-                  })
-                : [];
-        }, [
-            explore,
-            resultsData?.metricQuery.additionalMetrics,
-            resultsData?.metricQuery.metrics,
-            resultsData?.metricQuery.tableCalculations,
-        ]);
-
-    const items = [
-        ...dimensionsInMetricQuery,
-        ...customDimensions,
-        ...metricsAndTableCalculations,
-    ];
+    const items = useMemo(() => Object.values(itemsMap || {}), [itemsMap]);
 
     return (
         <Tabs defaultValue="layout" keepMounted={false}>
@@ -93,7 +38,7 @@ const ChartConfigTabs: FC = memo(() => {
                 <SeriesTab items={items} />
             </Tabs.Panel>
             <Tabs.Panel value="axes">
-                <AxesOptions items={items} />
+                <AxesOptions itemsMap={itemsMap} />
             </Tabs.Panel>
             <Tabs.Panel value="legend">
                 <LegendPanel items={items} />

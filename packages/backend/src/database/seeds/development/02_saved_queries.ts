@@ -29,6 +29,7 @@ export async function seed(knex: Knex): Promise<void> {
                 'Total revenue received via coupons, gift cards, bank transfers, and credit cards',
             tableName: 'payments',
             metricQuery: {
+                exploreName: 'payments',
                 dimensions: ['payments_payment_method'],
                 metrics: [
                     'payments_total_revenue',
@@ -98,6 +99,7 @@ export async function seed(knex: Knex): Promise<void> {
             description: `A single number showing the sum of all historical revenue`,
             tableName: 'payments',
             metricQuery: {
+                exploreName: 'payments',
                 dimensions: ['orders_status'],
                 metrics: ['payments_total_revenue'],
                 filters: {},
@@ -142,13 +144,14 @@ export async function seed(knex: Knex): Promise<void> {
                 'Time series of orders received per day and total orders over time',
             tableName: 'orders',
             metricQuery: {
-                dimensions: ['orders_order_date'],
+                exploreName: 'orders',
+                dimensions: ['orders_order_date_day'],
                 metrics: ['orders_unique_order_count'],
                 filters: {},
                 limit: 500,
                 sorts: [
                     {
-                        fieldId: 'orders_order_date',
+                        fieldId: 'orders_order_date_day',
                         descending: false,
                     },
                 ],
@@ -156,7 +159,7 @@ export async function seed(knex: Knex): Promise<void> {
                     {
                         name: 'cumulative_order_count',
                         displayName: 'Cumulative order count',
-                        sql: 'SUM(${orders.unique_order_count})\nOVER(ORDER BY ${orders.order_date})',
+                        sql: 'SUM(${orders.unique_order_count})\nOVER(ORDER BY ${orders.order_date_day})',
                     },
                 ],
             },
@@ -164,7 +167,7 @@ export async function seed(knex: Knex): Promise<void> {
                 type: ChartType.CARTESIAN,
                 config: {
                     layout: {
-                        xField: 'orders_order_date',
+                        xField: 'orders_order_date_day',
                         yField: [
                             'orders_unique_order_count',
                             'cumulative_order_count',
@@ -174,7 +177,7 @@ export async function seed(knex: Knex): Promise<void> {
                         series: [
                             {
                                 encode: {
-                                    xRef: { field: 'orders_order_date' },
+                                    xRef: { field: 'orders_order_date_day' },
                                     yRef: {
                                         field: 'orders_unique_order_count',
                                     },
@@ -184,7 +187,7 @@ export async function seed(knex: Knex): Promise<void> {
                             },
                             {
                                 encode: {
-                                    xRef: { field: 'orders_order_date' },
+                                    xRef: { field: 'orders_order_date_day' },
                                     yRef: { field: 'cumulative_order_count' },
                                 },
                                 type: CartesianSeriesType.LINE,
@@ -196,7 +199,7 @@ export async function seed(knex: Knex): Promise<void> {
             },
             tableConfig: {
                 columnOrder: [
-                    'orders_order_date',
+                    'orders_order_date_day',
                     'orders_unique_order_count',
                     'cumulative_order_count',
                 ],
@@ -213,6 +216,7 @@ export async function seed(knex: Knex): Promise<void> {
             description: 'Average order size for each customer id',
             tableName: 'orders',
             metricQuery: {
+                exploreName: 'orders',
                 dimensions: ['customers_customer_id'],
                 metrics: ['orders_average_order_size'],
                 filters: {},
@@ -265,6 +269,7 @@ export async function seed(knex: Knex): Promise<void> {
                 'A table of the 20 customers that least recently placed an order with us',
             tableName: 'payments',
             metricQuery: {
+                exploreName: 'payments',
                 dimensions: [
                     'customers_customer_id',
                     'customers_days_since_last_order',
@@ -310,6 +315,7 @@ export async function seed(knex: Knex): Promise<void> {
                 'A single value of the total number of orders received in February',
             tableName: 'orders',
             metricQuery: {
+                exploreName: 'orders',
                 dimensions: ['orders_order_date_month'],
                 metrics: [
                     'orders_total_order_amount',
@@ -363,6 +369,7 @@ export async function seed(knex: Knex): Promise<void> {
             description: 'A pivot table sample',
             tableName: 'payments',
             metricQuery: {
+                exploreName: 'payments',
                 dimensions: [
                     'payments_payment_method',
                     'customers_created_month',
@@ -426,6 +433,7 @@ export async function seed(knex: Knex): Promise<void> {
             description: 'A pivot table sample',
             tableName: 'customers',
             metricQuery: {
+                exploreName: 'customers',
                 dimensions: ['customers_created_month'],
                 metrics: ['customers_unique_customer_count'],
                 filters: {},
@@ -477,6 +485,7 @@ export async function seed(knex: Knex): Promise<void> {
             description: 'Payment range by amount',
             tableName: 'payments',
             metricQuery: {
+                exploreName: 'payments',
                 dimensions: ['payments_payment_method'],
                 metrics: ['orders_total_order_amount'],
                 filters: {},

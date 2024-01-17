@@ -4,23 +4,17 @@ import {
     CompactOrAlias,
     ComparisonDiffTypes,
     ComparisonFormatTypes,
-    convertAdditionalMetric,
-    Explore,
-    Field,
-    fieldId,
     Format,
     formatTableCalculationValue,
     formatValue,
     friendlyName,
-    getDimensions,
+    getItemId,
     getItemLabel,
-    getItemMap,
-    getMetrics,
     isField,
+    isMetric,
     isNumericItem,
     isTableCalculation,
-    Metric,
-    TableCalculation,
+    ItemsMap,
     valueIsNaN,
 } from '@lightdash/common';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -33,7 +27,7 @@ const calculateComparisonValue = (
     const rawValue = a - b;
     switch (format) {
         case ComparisonFormatTypes.PERCENTAGE:
-            return rawValue / b;
+            return rawValue / Math.abs(b);
         case ComparisonFormatTypes.RAW:
             return rawValue;
         default:
@@ -46,9 +40,9 @@ const UNDEFINED = 'undefined';
 const formatComparisonValue = (
     format: ComparisonFormatTypes | undefined,
     comparisonDiff: ComparisonDiffTypes | undefined,
-    item: Field | TableCalculation | undefined,
+    item: ItemsMap[string] | undefined,
     value: number | string,
-    bigNumberStyle: CompactOrAlias | undefined,
+    bigNumberComparisonStyle: CompactOrAlias | undefined,
 ) => {
     const prefix =
         comparisonDiff === ComparisonDiffTypes.POSITIVE ||
@@ -65,94 +59,71 @@ const formatComparisonValue = (
                 round: 0,
             })}`;
         case ComparisonFormatTypes.RAW:
+            if (item !== undefined && isTableCalculation(item)) {
+                return `${prefix}${formatTableCalculationValue(item, value)}`;
+            }
             return `${prefix}${formatValue(value, {
                 format: isField(item) ? item.format : undefined,
-                round: bigNumberStyle
+                round: bigNumberComparisonStyle
                     ? 2
                     : isField(item)
                     ? item.round
                     : undefined,
-                compact: bigNumberStyle,
+                compact: bigNumberComparisonStyle,
             })}`;
         default:
+            if (item !== undefined && isTableCalculation(item)) {
+                return formatTableCalculationValue(item, value);
+            }
             return formatValue(value, {
                 format: isField(item) ? item.format : undefined,
-                round: bigNumberStyle
+                round: bigNumberComparisonStyle
                     ? 2
                     : isField(item)
                     ? item.round
                     : undefined,
-                compact: bigNumberStyle,
+                compact: bigNumberComparisonStyle,
             });
     }
 };
 
-const isNumber = (i: Field | TableCalculation | undefined, value: any) =>
+const isNumber = (i: ItemsMap[string] | undefined, value: any) =>
     isNumericItem(i) && !(value instanceof Date) && !valueIsNaN(value);
+
+const getItemPriority = (item: ItemsMap[string]): number => {
+    if (isField(item) && isMetric(item)) {
+        return 1;
+    }
+    if (isTableCalculation(item)) {
+        return 2;
+    }
+    return 3;
+};
 
 const useBigNumberConfig = (
     bigNumberConfigData: BigNumber | undefined,
     resultsData: ApiQueryResults | undefined,
-    explore: Explore | undefined,
+    itemsMap: ItemsMap | undefined,
 ) => {
-    const [availableFields, availableFieldsIds] = useMemo(() => {
-        const customMetrics = explore
-            ? (resultsData?.metricQuery.additionalMetrics || []).reduce<
-                  Metric[]
-              >((acc, additionalMetric) => {
-                  const table = explore.tables[additionalMetric.table];
-                  if (table) {
-                      const metric = convertAdditionalMetric({
-                          additionalMetric,
-                          table,
-                      });
-                      return [...acc, metric];
-                  }
-                  return acc;
-              }, [])
-            : [];
-        const tableCalculations = resultsData?.metricQuery.tableCalculations
-            ? resultsData?.metricQuery.tableCalculations
-            : [];
-        const dimensions = explore
-            ? getDimensions(explore).filter((field) =>
-                  resultsData?.metricQuery.dimensions.includes(fieldId(field)),
-              )
-            : [];
-        const metrics = explore
-            ? getMetrics(explore).filter((field) =>
-                  resultsData?.metricQuery.metrics.includes(fieldId(field)),
-              )
-            : [];
-
-        const fields = [
-            ...metrics,
-            ...customMetrics,
-            ...dimensions,
-            ...tableCalculations,
-        ];
-        const fieldIds = fields.map((field) =>
-            isField(field) ? fieldId(field) : field.name,
-        );
-        return [fields, fieldIds];
-    }, [resultsData, explore]);
+    const availableFieldsIds = useMemo(() => {
+        const itemsSortedByType = Object.values(itemsMap || {}).sort((a, b) => {
+            return getItemPriority(a) - getItemPriority(b);
+        });
+        return itemsSortedByType.map(getItemId);
+    }, [itemsMap]);
 
     const [selectedField, setSelectedField] = useState<string | undefined>();
 
     const getField = useCallback(
         (fieldNameOrId: string | undefined) => {
-            if (fieldNameOrId === undefined) return;
-            return availableFields.find((f) => {
-                return isField(f)
-                    ? fieldId(f) === fieldNameOrId
-                    : f.name === fieldNameOrId;
-            });
+            if (!fieldNameOrId || !itemsMap) return;
+            return itemsMap[fieldNameOrId];
         },
-        [availableFields],
+        [itemsMap],
     );
 
     useEffect(() => {
-        if (explore && availableFieldsIds.length > 0 && bigNumberConfigData) {
+        if (itemsMap && availableFieldsIds.length > 0 && bigNumberConfigData) {
             const selectedFieldExists =
                 bigNumberConfigData?.selectedField &&
                 getField(bigNumberConfigData?.selectedField) !== undefined;
@@ -167,28 +138,18 @@ const useBigNumberConfig = (
             }
         }
     }, [
-        explore,
+        itemsMap,
         bigNumberConfigData,
         selectedField,
         availableFieldsIds,
         getField,
     ]);
 
-    const itemMap = useMemo(() => {
-        if (!explore) return;
-
-        return getItemMap(
-            explore,
-            resultsData?.metricQuery.additionalMetrics,
-            resultsData?.metricQuery.tableCalculations,
-        );
-    }, [explore, resultsData]);
-
     const item = useMemo(() => {
-        if (!itemMap || !selectedField) return;
+        if (!itemsMap || !selectedField) return;
 
-        return itemMap[selectedField];
-    }, [itemMap, selectedField]);
+        return itemsMap[selectedField];
+    }, [itemsMap, selectedField]);
 
     const label = useMemo(() => {
         return item
@@ -203,6 +164,9 @@ const useBigNumberConfig = (
         BigNumber['showBigNumberLabel'] | undefined
     >(bigNumberConfigData?.showBigNumberLabel);
     const [bigNumberStyle, setBigNumberStyle] = useState<
+        BigNumber['style'] | undefined
+    >(bigNumberConfigData?.style);
+    const [bigNumberComparisonStyle, setBigNumberComparisonStyle] = useState<
         BigNumber['style'] | undefined
     >(bigNumberConfigData?.style);
 
@@ -227,6 +191,7 @@ const useBigNumberConfig = (
         setShowBigNumberLabel(bigNumberConfigData?.showBigNumberLabel ?? true);
 
         setBigNumberStyle(bigNumberConfigData?.style);
+        setBigNumberComparisonStyle(bigNumberConfigData?.style);
 
         setShowComparison(bigNumberConfigData?.showComparison ?? false);
         setComparisonFormat(
@@ -305,14 +270,14 @@ const useBigNumberConfig = (
                   comparisonDiff,
                   item,
                   unformattedValue,
-                  bigNumberStyle,
+                  bigNumberComparisonStyle,
               );
     }, [
         comparisonFormat,
         comparisonDiff,
         item,
         unformattedValue,
-        bigNumberStyle,
+        bigNumberComparisonStyle,
     ]);
 
     const comparisonTooltip = useMemo(() => {
@@ -365,8 +330,9 @@ const useBigNumberConfig = (
         validConfig,
         bigNumberStyle,
         setBigNumberStyle,
+        bigNumberComparisonStyle,
+        setBigNumberComparisonStyle,
         showStyle,
-        availableFields,
         selectedField,
         setSelectedField,
         getField,

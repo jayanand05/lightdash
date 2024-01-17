@@ -1,7 +1,8 @@
-import { NonIdealState } from '@blueprintjs/core';
 import { Box, Flex } from '@mantine/core';
+import { IconAlertCircle } from '@tabler/icons-react';
 import { FC } from 'react';
 import PivotTable from '../common/PivotTable';
+import SuboptimalState from '../common/SuboptimalState/SuboptimalState';
 import Table from '../common/Table';
 import { ResultCount } from '../common/Table/TablePagination';
 import { isTableVisualizationConfig } from '../LightdashVisualization/VisualizationConfigTable';
@@ -31,7 +32,7 @@ const SimpleTable: FC<SimpleTableProps> = ({
         isLoading,
         columnOrder,
         isSqlRunner,
-        explore,
+        itemsMap,
         visualizationConfig,
     } = useVisualizationContext();
 
@@ -54,20 +55,20 @@ const SimpleTable: FC<SimpleTableProps> = ({
 
     if (error) {
         return (
-            <NonIdealState
+            <SuboptimalState
                 title="Results not available"
                 description={error}
-                icon="error"
+                icon={IconAlertCircle}
             />
         );
     }
 
     if (pivotTableData.error) {
         return (
-            <NonIdealState
+            <SuboptimalState
                 title="Results not available"
                 description={pivotTableData.error}
-                icon="error"
+                icon={IconAlertCircle}
             />
         );
     } else if (pivotTableData.loading || pivotTableData.data) {
@@ -120,7 +121,7 @@ const SimpleTable: FC<SimpleTableProps> = ({
                     show: showColumnCalculation,
                 }}
                 headerContextMenu={(props) => {
-                    if (isDashboard && tileUuid)
+                    if (!minimal && isDashboard && tileUuid)
                         return (
                             <DashboardHeaderContextMenu
                                 {...props}
@@ -135,8 +136,7 @@ const SimpleTable: FC<SimpleTableProps> = ({
                         return (
                             <DashboardCellContextMenu
                                 {...props}
-                                tileUuid={tileUuid}
-                                explore={explore}
+                                itemsMap={itemsMap}
                             />
                         );
                     return <CellContextMenu {...props} />;

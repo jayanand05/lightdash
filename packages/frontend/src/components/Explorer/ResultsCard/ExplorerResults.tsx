@@ -1,4 +1,4 @@
-import { Field, getItemMap, TableCalculation } from '@lightdash/common';
+import { getItemMap } from '@lightdash/common';
 import { Box, Text } from '@mantine/core';
 import { FC, memo, useCallback, useMemo, useState } from 'react';
 
@@ -42,9 +42,10 @@ export const ExplorerResults = memo(() => {
     const setColumnOrder = useExplorerContext(
         (context) => context.actions.setColumnOrder,
     );
-    const { isLoading, data: exploreData } = useExplore(activeTableName, {
-        refetchOnMount: false,
-    });
+    const { isInitialLoading, data: exploreData } = useExplore(
+        activeTableName,
+        { refetchOnMount: false },
+    );
     const tableCalculations = useExplorerContext(
         (context) =>
             context.state.unsavedChartVersion.metricQuery.tableCalculations,
@@ -70,20 +71,19 @@ export const ExplorerResults = memo(() => {
         setIsExpandModalOpened(true);
     };
 
-    const itemsMap: Record<string, Field | TableCalculation> | undefined =
-        useMemo(() => {
-            if (exploreData) {
-                return getItemMap(
-                    exploreData,
-                    additionalMetrics,
-                    tableCalculations,
-                );
-            }
-            return undefined;
-        }, [exploreData, additionalMetrics, tableCalculations]);
+    const itemsMap = useMemo(() => {
+        if (exploreData) {
+            return getItemMap(
+                exploreData,
+                additionalMetrics,
+                tableCalculations,
+            );
+        }
+        return undefined;
+    }, [exploreData, additionalMetrics, tableCalculations]);
 
     const cellContextMenu = useCallback(
-        (props) => (
+        (props: any) => (
             <CellContextMenu
                 isEditMode={isEditMode}
                 {...props}
@@ -137,7 +137,7 @@ export const ExplorerResults = memo(() => {
 
     if (!activeTableName) return <NoTableSelected />;
 
-    if (isLoading) return <EmptyStateExploreLoading />;
+    if (isInitialLoading) return <EmptyStateExploreLoading />;
 
     if (columns.length === 0) return <EmptyStateNoColumns />;
     return (

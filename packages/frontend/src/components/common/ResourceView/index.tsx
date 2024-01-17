@@ -11,7 +11,7 @@ import {
     useMantineTheme,
 } from '@mantine/core';
 import { IconInfoCircle } from '@tabler/icons-react';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTableTabStyles } from '../../../hooks/styles/useTableTabStyles';
 import MantineIcon from '../MantineIcon';
 import ResourceActionHandlers, {
@@ -64,7 +64,7 @@ interface ResourceViewProps extends ResourceViewCommonProps {
     defaultActiveTab?: string;
 }
 
-const ResourceView: React.FC<ResourceViewProps> = ({
+const ResourceView: FC<ResourceViewProps> = ({
     view = ResourceViewType.LIST,
     items: allItems,
     maxItems,
@@ -85,11 +85,6 @@ const ResourceView: React.FC<ResourceViewProps> = ({
 
     const handleAction = useCallback(
         (newAction: ResourceViewItemActionState) => {
-            // TODO: remove when #6626 is closed
-            console.log('--------------------');
-            console.log('handleAction in ResourceView');
-            console.log('newAction', newAction);
-            console.log('====================');
             setAction(newAction);
         },
         [],

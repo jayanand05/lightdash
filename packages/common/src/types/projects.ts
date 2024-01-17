@@ -1,6 +1,7 @@
 import assertUnreachable from '../utils/assertUnreachable';
 import { WeekDay } from '../utils/timeFrames';
 import { DbtManifestVersion } from './dbt';
+import { ProjectGroupAccess } from './projectGroupAccess';
 
 export enum ProjectType {
     DEFAULT = 'DEFAULT',
@@ -293,12 +294,17 @@ export type Project = {
 
 export type ProjectSummary = Pick<
     Project,
-    'name' | 'projectUuid' | 'organizationUuid'
+    'name' | 'projectUuid' | 'organizationUuid' | 'type'
 >;
 
 export type ApiProjectResponse = {
     status: 'ok';
     results: Project;
+};
+
+export type ApiGetProjectGroupAccesses = {
+    status: 'ok';
+    results: ProjectGroupAccess[];
 };
 
 export type IdContentMapping = {

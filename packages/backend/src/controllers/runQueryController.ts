@@ -5,6 +5,7 @@ import {
     CacheMetadata,
     CustomDimension,
     FieldId,
+    Item,
     MetricQuery,
     MetricQueryRequest,
     MetricQueryResponse,
@@ -34,24 +35,8 @@ export type ApiRunQueryResponse = {
         metricQuery: MetricQueryResponse; // tsoa doesn't support complex types like MetricQuery
         cacheMetadata: CacheMetadata;
         rows: any[];
+        fields?: Record<string, Item | AdditionalMetric>;
     };
-};
-
-type RunQueryRequest = {
-    // tsoa doesn't support complex types like MetricQuery
-    dimensions: FieldId[]; // Dimensions to group by in the explore
-    metrics: FieldId[]; // Metrics to compute in the explore
-    filters: {
-        dimensions?: any;
-        metrics?: any;
-        tableCalculations?: any;
-    };
-    sorts: SortField[]; // Sorts for the data
-    limit: number; // Max number of rows to return from query
-    tableCalculations: TableCalculation[]; // calculations to append to results
-    additionalMetrics?: AdditionalMetric[]; // existing metric type
-    csvLimit?: number;
-    customDimensions?: CustomDimension[];
 };
 
 @Route('/api/v1/projects/{projectUuid}')
@@ -76,6 +61,7 @@ export class RunViewChartQueryController extends Controller {
         @Request() req: express.Request,
     ): Promise<ApiRunQueryResponse> {
         const metricQuery: MetricQuery = {
+            exploreName: body.exploreName,
             dimensions: body.dimensions,
             metrics: body.metrics,
             filters: body.filters,
@@ -119,6 +105,7 @@ export class RunViewChartQueryController extends Controller {
         @Request() req: express.Request,
     ): Promise<ApiRunQueryResponse> {
         const metricQuery: MetricQuery = {
+            exploreName: body.exploreName,
             dimensions: body.dimensions,
             metrics: body.metrics,
             filters: body.filters,
@@ -134,6 +121,7 @@ export class RunViewChartQueryController extends Controller {
             projectUuid,
             exploreId,
             body.csvLimit,
+            body.granularity,
         );
         this.setStatus(200);
         return {

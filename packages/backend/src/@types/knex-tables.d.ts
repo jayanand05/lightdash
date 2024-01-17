@@ -125,18 +125,22 @@ import {
 import {
     EmailOneTimePasscodesTableName,
     EmailOneTimePasscodeTable,
-} from '../database/entities/email_one_time_passcodes';
-import { GroupTable, GroupTableName } from '../database/entities/groups';
+} from '../database/entities/emailOneTimePasscodes';
 import {
     GroupMembershipTable,
     GroupMembershipTableName,
-} from '../database/entities/group_memberships';
+} from '../database/entities/groupMemberships';
+import { GroupTable, GroupTableName } from '../database/entities/groups';
 import {
     OrganizationAllowedEmailDomainProjectsTable,
     OrganizationAllowedEmailDomainProjectsTableName,
     OrganizationAllowedEmailDomainsTable,
     OrganizationAllowedEmailDomainsTableName,
 } from '../database/entities/organizationsAllowedEmailDomains';
+import {
+    ProjectGroupAccessTable,
+    ProjectGroupAccessTableName,
+} from '../database/entities/projectGroupAccess';
 import {
     SchedulerEmailTargetTable,
     SchedulerEmailTargetTableName,
@@ -150,10 +154,12 @@ import {
 import {
     SshKeyPairTable,
     SshKeyPairTableName,
-} from '../database/entities/ssh_key_pairs';
+} from '../database/entities/sshKeyPairs';
 import {
+    DbGroupUserAttribute,
     DbOrganizationMemberUserAttribute,
     DbUserAttribute,
+    GroupUserAttributesTable,
     OrganizationMemberUserAttributesTable,
     UserAttributesTable,
 } from '../database/entities/userAttributes';
@@ -198,6 +204,7 @@ declare module 'knex/types/tables' {
         [JobStepsTableName]: JobStepsTable;
         [PersonalAccessTokenTableName]: PersonalAccessTokenTable;
         [ProjectMembershipsTableName]: ProjectMembershipsTable;
+        [ProjectGroupAccessTableName]: ProjectGroupAccessTable;
         [DbtCloudIntegrationsTableName]: DbtCloudIntegrationsTable;
         [ShareTableName]: ShareTable;
         [SpaceShareTableName]: SpaceShareTable;
@@ -221,6 +228,7 @@ declare module 'knex/types/tables' {
         [SshKeyPairTableName]: SshKeyPairTable;
         [UserAttributesTable]: DbUserAttribute;
         [OrganizationMemberUserAttributesTable]: DbOrganizationMemberUserAttribute;
+        [GroupUserAttributesTable]: DbGroupUserAttribute;
         [SavedChartCustomDimensionsTableName]: SavedChartCustomDimensionsTable;
     }
 }

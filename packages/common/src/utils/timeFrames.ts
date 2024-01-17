@@ -189,7 +189,7 @@ const postgresConfig: WarehouseConfig = {
                 `Cannot recognise format expression for ${timeFrame}`,
             );
         }
-        return `TO_CHAR(${originalSql}, '${formatExpression}')`;
+        return `TO_CHAR(${originalSql}, 'FM${formatExpression}')`;
     },
 };
 
@@ -272,7 +272,7 @@ const warehouseConfigs: Record<SupportedDbtAdapter, WarehouseConfig> = {
     [SupportedDbtAdapter.TRINO]: trinoConfig,
 };
 
-const getSqlForTruncatedDate: TimeFrameConfig['getSql'] = (
+export const getSqlForTruncatedDate: TimeFrameConfig['getSql'] = (
     adapterType,
     timeFrame,
     originalSql,

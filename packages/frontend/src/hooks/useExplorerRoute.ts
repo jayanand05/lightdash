@@ -1,4 +1,9 @@
-import { ChartType, CreateSavedChartVersion } from '@lightdash/common';
+import {
+    ChartType,
+    CreateSavedChartVersion,
+    DateGranularity,
+    MetricQuery,
+} from '@lightdash/common';
 import { useEffect, useMemo } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import {
@@ -17,10 +22,31 @@ export const getExplorerUrlFromCreateSavedChartVersion = (
         'create_saved_chart_version',
         JSON.stringify(createSavedChart),
     );
+
     return {
         pathname: `/projects/${projectUuid}/tables/${createSavedChart.tableName}`,
         search: newParams.toString(),
     };
+};
+
+export const useDateZoomGranularitySearch = (): DateGranularity | undefined => {
+    const { search } = useLocation();
+
+    const searchParams = new URLSearchParams(search);
+    const dateZoomParam = searchParams.get('dateZoom');
+    const dateZoom = Object.values(DateGranularity).find(
+        (granularity) =>
+            granularity.toLowerCase() === dateZoomParam?.toLowerCase(),
+    );
+    return dateZoom;
+};
+
+// To handle older url params where exploreName wasn't required
+type BackwardsCompatibleCreateSavedChartVersionUrlParam = Omit<
+    CreateSavedChartVersion,
+    'metricQuery'
+> & {
+    metricQuery: Omit<MetricQuery, 'exploreName'> & { exploreName?: string };
 };
 
 export const parseExplorerSearchParams = (
@@ -30,9 +56,19 @@ export const parseExplorerSearchParams = (
     const chartConfigSearchParam = searchParams.get(
         'create_saved_chart_version',
     );
-    return chartConfigSearchParam
-        ? JSON.parse(chartConfigSearchParam)
-        : undefined;
+    if (chartConfigSearchParam) {
+        const parsedValue: BackwardsCompatibleCreateSavedChartVersionUrlParam =
+            JSON.parse(chartConfigSearchParam);
+        return {
+            ...parsedValue,
+            metricQuery: {
+                ...parsedValue.metricQuery,
+                exploreName:
+                    parsedValue.metricQuery.exploreName ||
+                    parsedValue.tableName,
+            },
+        };
+    }
 };
 
 export const useExplorerRoute = () => {
@@ -41,6 +77,8 @@ export const useExplorerRoute = () => {
         projectUuid: string;
         tableId: string | undefined;
     }>();
+
+    const dateZoom = useDateZoomGranularitySearch();
     const unsavedChartVersion = useExplorerContext(
         (context) => context.state.unsavedChartVersion,
     );
@@ -72,6 +110,7 @@ export const useExplorerRoute = () => {
         history,
         pathParams.projectUuid,
         unsavedChartVersion,
+        dateZoom,
     ]);
 
     useEffect(() => {
@@ -96,6 +135,7 @@ export const useExplorerUrlState = (): ExplorerReduceState | undefined => {
             const unsavedChartVersion = parseExplorerSearchParams(search) || {
                 tableName: '',
                 metricQuery: {
+                    exploreName: '',
                     dimensions: [],
                     metrics: [],
                     filters: {},

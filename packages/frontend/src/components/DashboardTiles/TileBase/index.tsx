@@ -1,15 +1,20 @@
-import {
-    Button,
-    Classes,
-    Menu,
-    MenuDivider,
-    PopoverPosition,
-} from '@blueprintjs/core';
-import { MenuItem2, Popover2 } from '@blueprintjs/popover2';
 import { Dashboard, DashboardTileTypes, isChartTile } from '@lightdash/common';
-import { Group, Text, Tooltip } from '@mantine/core';
+import {
+    ActionIcon,
+    Box,
+    Card,
+    Flex,
+    getDefaultZIndex,
+    Group,
+    LoadingOverlay,
+    Menu,
+    Text,
+    Tooltip,
+} from '@mantine/core';
 import { useHover, useToggle } from '@mantine/hooks';
+import { IconDots, IconEdit, IconTrash } from '@tabler/icons-react';
 import { ReactNode, useState } from 'react';
+import MantineIcon from '../../common/MantineIcon';
 import DeleteChartTileThatBelongsToDashboardModal from '../../common/modal/DeleteChartTileThatBelongsToDashboardModal';
 import ChartUpdateModal from '../TileForms/ChartUpdateModal';
 import TileUpdateModal from '../TileForms/TileUpdateModal';
@@ -17,7 +22,6 @@ import {
     ButtonsWrapper,
     ChartContainer,
     HeaderContainer,
-    TileBaseWrapper,
     TileTitleLink,
     TitleWrapper,
 } from './TileBase.styles';
@@ -59,7 +63,6 @@ const TileBase = <T extends Dashboard['tiles'][number]>({
         isDeletingChartThatBelongsToDashboard,
         setIsDeletingChartThatBelongsToDashboard,
     ] = useState(false);
-    const [isHovering, setIsHovering] = useState(false);
     const { hovered: containerHovered, ref: containerRef } = useHover();
     const { hovered: titleHovered, ref: titleRef } =
         useHover<HTMLAnchorElement>();
@@ -76,181 +79,228 @@ const TileBase = <T extends Dashboard['tiles'][number]>({
         tile.type === DashboardTileTypes.MARKDOWN && !title;
 
     return (
-        <TileBaseWrapper
-            className={isLoading ? Classes.SKELETON : undefined}
+        <Card
+            component={Flex}
+            className="tile-base"
             ref={containerRef}
-            $isEditMode={isEditMode}
-            $isHovering={isHovering}
+            h="100%"
+            direction="column"
+            p="md"
+            bg="white"
+            radius="sm"
+            shadow={isEditMode ? 'xs' : undefined}
+            sx={(theme) => ({
+                overflow: 'unset',
+
+                border: isEditMode
+                    ? `1px dashed ${theme.colors.blue[5]}`
+                    : `1px solid ${theme.colors.gray[1]}`,
+            })}
         >
-            {!isLoading && (
-                <>
-                    <HeaderContainer
-                        $isEditMode={isEditMode}
-                        onMouseEnter={() => setIsHovering(true)}
-                        onMouseLeave={() => setIsHovering(false)}
-                        $isEmpty={isMarkdownTileTitleEmpty || hideTitle}
-                    >
-                        <Tooltip
-                            disabled={!description}
-                            label={description}
-                            multiline
-                            position="top-start"
-                            withinPortal
-                            maw={400}
-                        >
-                            <TitleWrapper $hovered={titleHovered}>
-                                <Group spacing="xs">
-                                    {titleLeftIcon}
+            <LoadingOverlay visible={isLoading ?? false} />
 
-                                    {!hideTitle ? (
-                                        belongsToDashboard ? (
-                                            <Text fw={600} size="md">
-                                                {title}
-                                            </Text>
-                                        ) : (
-                                            <TileTitleLink
-                                                ref={titleRef}
-                                                href={titleHref}
-                                                $hovered={titleHovered}
-                                                target="_blank"
-                                                className="non-draggable"
-                                            >
-                                                {title}
-                                            </TileTitleLink>
-                                        )
-                                    ) : null}
-                                </Group>
-                            </TitleWrapper>
-                        </Tooltip>
+            <HeaderContainer
+                $isEditMode={isEditMode}
+                $isEmpty={isMarkdownTileTitleEmpty || hideTitle}
+                style={
+                    isLoading
+                        ? {
+                              zIndex: getDefaultZIndex('overlay') + 1,
+                          }
+                        : {}
+                }
+            >
+                <Tooltip
+                    disabled={!description || !!titleLeftIcon}
+                    label={description}
+                    multiline
+                    position="top-start"
+                    withinPortal
+                    maw={400}
+                >
+                    <TitleWrapper $hovered={titleHovered}>
+                        <Group spacing="xs">
+                            {titleLeftIcon}
 
-                        {(containerHovered && !titleHovered) || isMenuOpen ? (
-                            <ButtonsWrapper className="non-draggable">
-                                {extraHeaderElement}
-                                {(isEditMode ||
-                                    (!isEditMode && extraMenuItems)) && (
-                                    <Popover2
-                                        lazy
-                                        onOpening={() => toggleMenu(true)}
-                                        onClosed={() => toggleMenu(false)}
-                                        position={PopoverPosition.BOTTOM_RIGHT}
-                                        content={
-                                            <Menu>
-                                                {extraMenuItems}
-                                                {isEditMode &&
-                                                    extraMenuItems && (
-                                                        <MenuDivider />
-                                                    )}
-                                                {isEditMode && (
-                                                    <>
-                                                        {!belongsToDashboard && (
-                                                            <MenuItem2
-                                                                icon="edit"
-                                                                text="Edit tile content"
-                                                                onClick={() =>
-                                                                    setIsEditingTileContent(
-                                                                        true,
-                                                                    )
-                                                                }
-                                                            />
-                                                        )}
-                                                        {belongsToDashboard ? (
-                                                            <MenuItem2
-                                                                icon="delete"
-                                                                intent="danger"
-                                                                text="Delete chart"
-                                                                onClick={() =>
-                                                                    setIsDeletingChartThatBelongsToDashboard(
-                                                                        true,
-                                                                    )
-                                                                }
-                                                            />
-                                                        ) : (
-                                                            <>
-                                                                <MenuDivider />
-                                                                <MenuItem2
-                                                                    icon="delete"
-                                                                    intent="danger"
-                                                                    text="Remove tile"
-                                                                    onClick={() =>
-                                                                        onDelete(
-                                                                            tile,
-                                                                        )
-                                                                    }
-                                                                />
-                                                            </>
-                                                        )}
-                                                    </>
-                                                )}
-                                            </Menu>
-                                        }
-                                        renderTarget={({ ref, ...props }) => (
-                                            <Button
-                                                elementRef={ref}
-                                                minimal
-                                                small
-                                                icon="more"
-                                                {...props}
-                                            />
-                                        )}
-                                    />
+                            <Tooltip
+                                disabled={!description || !titleLeftIcon}
+                                label={description}
+                                multiline
+                                position="top-start"
+                                withinPortal
+                                maw={400}
+                            >
+                                {!hideTitle ? (
+                                    belongsToDashboard ? (
+                                        <Text fw={600} size="md">
+                                            {title}
+                                        </Text>
+                                    ) : (
+                                        <TileTitleLink
+                                            ref={titleRef}
+                                            href={titleHref}
+                                            $hovered={titleHovered}
+                                            target="_blank"
+                                            className="non-draggable"
+                                        >
+                                            {title}
+                                        </TileTitleLink>
+                                    )
+                                ) : (
+                                    <Box />
                                 )}
-                            </ButtonsWrapper>
-                        ) : null}
-                    </HeaderContainer>
-                    <ChartContainer className="non-draggable sentry-block ph-no-capture">
-                        {children}
-                    </ChartContainer>
-                    {isEditingTileContent &&
-                        (tile.type === DashboardTileTypes.SAVED_CHART ? (
-                            <ChartUpdateModal
-                                opened={isEditingTileContent}
-                                tile={tile}
-                                onClose={() => setIsEditingTileContent(false)}
-                                onConfirm={(
-                                    newTitle,
-                                    newUuid,
-                                    shouldHideTitle,
-                                ) => {
-                                    onEdit({
-                                        ...tile,
-                                        properties: {
-                                            ...tile.properties,
-                                            title: newTitle,
-                                            savedChartUuid: newUuid,
-                                            hideTitle: shouldHideTitle,
-                                        },
-                                    });
-                                    setIsEditingTileContent(false);
-                                }}
-                                hideTitle={!!hideTitle}
-                            />
-                        ) : (
-                            <TileUpdateModal
-                                className="non-draggable"
-                                isOpen={isEditingTileContent}
-                                tile={tile}
-                                onClose={() => setIsEditingTileContent(false)}
-                                onConfirm={(newTile) => {
-                                    onEdit(newTile);
-                                    setIsEditingTileContent(false);
-                                }}
-                            />
-                        ))}
-                    <DeleteChartTileThatBelongsToDashboardModal
-                        className={'non-draggable'}
-                        name={chartName ?? ''}
-                        opened={isDeletingChartThatBelongsToDashboard}
-                        onClose={() =>
-                            setIsDeletingChartThatBelongsToDashboard(false)
-                        }
-                        onConfirm={() => {
-                            onDelete(tile);
-                            setIsDeletingChartThatBelongsToDashboard(false);
+                            </Tooltip>
+                        </Group>
+                    </TitleWrapper>
+                </Tooltip>
+
+                {(containerHovered && !titleHovered) || isMenuOpen ? (
+                    <ButtonsWrapper className="non-draggable">
+                        {extraHeaderElement}
+                        {(isEditMode || (!isEditMode && extraMenuItems)) && (
+                            <Menu
+                                withArrow
+                                withinPortal
+                                shadow="md"
+                                position="bottom-end"
+                                offset={4}
+                                arrowOffset={10}
+                                opened={isMenuOpen}
+                                onOpen={() => toggleMenu(true)}
+                                onClose={() => toggleMenu(false)}
+                            >
+                                <Menu.Dropdown>
+                                    {extraMenuItems}
+                                    {isEditMode && extraMenuItems && (
+                                        <Menu.Divider />
+                                    )}
+                                    {isEditMode && (
+                                        <>
+                                            <Tooltip
+                                                disabled={!belongsToDashboard}
+                                                label="Tile content in charts from dashboards is not editable"
+                                            >
+                                                <Box>
+                                                    <Menu.Item
+                                                        icon={
+                                                            <MantineIcon
+                                                                icon={IconEdit}
+                                                            />
+                                                        }
+                                                        onClick={() =>
+                                                            setIsEditingTileContent(
+                                                                true,
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            belongsToDashboard
+                                                        }
+                                                    >
+                                                        Edit tile content
+                                                    </Menu.Item>
+                                                </Box>
+                                            </Tooltip>
+                                            {belongsToDashboard ? (
+                                                <Menu.Item
+                                                    color="red"
+                                                    onClick={() =>
+                                                        setIsDeletingChartThatBelongsToDashboard(
+                                                            true,
+                                                        )
+                                                    }
+                                                >
+                                                    Delete chart
+                                                </Menu.Item>
+                                            ) : (
+                                                <>
+                                                    <Menu.Divider />
+                                                    <Menu.Item
+                                                        color="red"
+                                                        icon={
+                                                            <MantineIcon
+                                                                icon={IconTrash}
+                                                            />
+                                                        }
+                                                        onClick={() =>
+                                                            onDelete(tile)
+                                                        }
+                                                    >
+                                                        Remove tile
+                                                    </Menu.Item>
+                                                </>
+                                            )}
+                                        </>
+                                    )}
+                                </Menu.Dropdown>
+
+                                <Menu.Target>
+                                    <ActionIcon
+                                        size="sm"
+                                        style={{
+                                            position: 'relative',
+                                            zIndex: 1,
+                                        }}
+                                    >
+                                        <MantineIcon
+                                            data-testid="tile-icon-more"
+                                            icon={IconDots}
+                                        />
+                                    </ActionIcon>
+                                </Menu.Target>
+                            </Menu>
+                        )}
+                    </ButtonsWrapper>
+                ) : null}
+            </HeaderContainer>
+
+            <ChartContainer className="non-draggable sentry-block ph-no-capture">
+                {children}
+            </ChartContainer>
+
+            {isEditingTileContent &&
+                (tile.type === DashboardTileTypes.SAVED_CHART ? (
+                    <ChartUpdateModal
+                        opened={isEditingTileContent}
+                        tile={tile}
+                        onClose={() => setIsEditingTileContent(false)}
+                        onConfirm={(newTitle, newUuid, shouldHideTitle) => {
+                            onEdit({
+                                ...tile,
+                                properties: {
+                                    ...tile.properties,
+                                    title: newTitle,
+                                    savedChartUuid: newUuid,
+                                    hideTitle: shouldHideTitle,
+                                },
+                            });
+                            setIsEditingTileContent(false);
+                        }}
+                        hideTitle={!!hideTitle}
+                    />
+                ) : (
+                    <TileUpdateModal
+                        className="non-draggable"
+                        opened={isEditingTileContent}
+                        tile={tile}
+                        onClose={() => setIsEditingTileContent(false)}
+                        onConfirm={(newTile) => {
+                            onEdit(newTile);
+                            setIsEditingTileContent(false);
                         }}
                     />
-                </>
-            )}
-        </TileBaseWrapper>
+                ))}
+
+            <DeleteChartTileThatBelongsToDashboardModal
+                className={'non-draggable'}
+                name={chartName ?? ''}
+                opened={isDeletingChartThatBelongsToDashboard}
+                onClose={() => setIsDeletingChartThatBelongsToDashboard(false)}
+                onConfirm={() => {
+                    onDelete(tile);
+                    setIsDeletingChartThatBelongsToDashboard(false);
+                }}
+            />
+        </Card>
     );
 };
 

@@ -13,10 +13,7 @@ import { useToggle } from 'react-use';
 import { hasNoWhiteSpaces } from '../../../utils/fieldValidators';
 import FormSection from '../../ReactHookForm/FormSection';
 import Input from '../../ReactHookForm/Input';
-import {
-    AdvancedButton,
-    AdvancedButtonWrapper,
-} from '../ProjectConnection.styles';
+import FormCollapseButton from '../FormCollapseButton';
 import { useProjectFormContext } from '../ProjectFormProvider';
 import StartOfWeekSelect from './Inputs/StartOfWeekSelect';
 
@@ -97,11 +94,12 @@ const BigQueryForm: FC<{
                             .
                         </p>
                     }
-                    required
                     {...register('warehouse.location', {
                         validate: {
                             hasNoWhiteSpaces: hasNoWhiteSpaces('Location'),
                         },
+                        setValueAs: (value) =>
+                            value === '' ? undefined : value,
                     })}
                     disabled={disabled}
                 />
@@ -112,6 +110,8 @@ const BigQueryForm: FC<{
                         <FileInput
                             {...field}
                             label="Key File"
+                            // FIXME: until mantine 7.4: https://github.com/mantinedev/mantine/issues/5401#issuecomment-1874906064
+                            // @ts-ignore
                             placeholder={
                                 !requireSecrets
                                     ? '**************'
@@ -284,14 +284,9 @@ const BigQueryForm: FC<{
                         <StartOfWeekSelect disabled={disabled} />
                     </Stack>
                 </FormSection>
-
-                <AdvancedButtonWrapper>
-                    <AdvancedButton
-                        icon={isOpen ? 'chevron-up' : 'chevron-down'}
-                        text={`Advanced configuration options`}
-                        onClick={toggleOpen}
-                    />
-                </AdvancedButtonWrapper>
+                <FormCollapseButton isSectionOpen={isOpen} onClick={toggleOpen}>
+                    Advanced configuration options
+                </FormCollapseButton>
             </Stack>
         </>
     );

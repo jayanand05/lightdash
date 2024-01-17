@@ -1,7 +1,7 @@
-import { NonIdealState, Spinner } from '@blueprintjs/core';
 import { Button, Group, Stack, Text } from '@mantine/core';
 import { useCallback, useEffect } from 'react';
 import ErrorState from '../../../components/common/ErrorState';
+import SuboptimalState from '../../../components/common/SuboptimalState/SuboptimalState';
 import { useScheduler } from '../../../features/scheduler/hooks/useScheduler';
 import { useSchedulersDeleteMutation } from '../../../features/scheduler/hooks/useSchedulersDeleteMutation';
 import { SyncModalAction, useSyncModal } from '../providers/SyncModalProvider';
@@ -26,12 +26,12 @@ export const SyncModalDelete = () => {
         deleteScheduler(currentSchedulerUuid);
     }, [deleteScheduler, currentSchedulerUuid]);
 
-    if (scheduler.isLoading || scheduler.error) {
-        return scheduler.isLoading ? (
-            <NonIdealState title="Loading sync" icon={<Spinner />} />
-        ) : (
-            <ErrorState error={scheduler.error.error} />
-        );
+    if (scheduler.isInitialLoading) {
+        return <SuboptimalState title="Loading sync" loading />;
+    }
+
+    if (scheduler.error) {
+        return <ErrorState error={scheduler.error.error} />;
     }
 
     return (
@@ -43,7 +43,7 @@ export const SyncModalDelete = () => {
             <Group position="apart">
                 <Button
                     variant="outline"
-                    color="gray"
+                    color="dark"
                     onClick={() => setAction(SyncModalAction.VIEW)}
                 >
                     Cancel

@@ -5,9 +5,18 @@ import {
     LightdashUser,
     OpenIdIdentityIssuerType,
 } from '@lightdash/common';
-import { Anchor, Button, Card, Image, Stack, Text, Title } from '@mantine/core';
+import {
+    Anchor,
+    Button,
+    Card,
+    Divider,
+    Image,
+    Stack,
+    Text,
+    Title,
+} from '@mantine/core';
+import { useMutation } from '@tanstack/react-query';
 import { FC, useEffect, useState } from 'react';
-import { useMutation } from 'react-query';
 import { Redirect, useLocation, useParams } from 'react-router-dom';
 
 import { lightdashApi } from '../api';
@@ -17,11 +26,11 @@ import PageSpinner from '../components/PageSpinner';
 import CreateUserForm from '../components/RegisterForms/CreateUserForm';
 import { useOrganization } from '../hooks/organization/useOrganization';
 import useToaster from '../hooks/toaster/useToaster';
+import { useFlashMessages } from '../hooks/useFlashMessages';
 import { useInviteLink } from '../hooks/useInviteLink';
 import { useApp } from '../providers/AppProvider';
 import { useTracking } from '../providers/TrackingProvider';
 import LightdashLogo from '../svgs/lightdash-black.svg';
-import { Divider, DividerWrapper } from './Invite.styles';
 
 interface WelcomeCardProps {
     email: string | undefined;
@@ -94,6 +103,16 @@ const Invite: FC = () => {
     const { inviteCode } = useParams<{ inviteCode: string }>();
     const { health } = useApp();
     const { showToastError } = useToaster();
+    const flashMessages = useFlashMessages();
+
+    useEffect(() => {
+        if (flashMessages.data?.error) {
+            showToastError({
+                title: 'Failed to authenticate',
+                subtitle: flashMessages.data.error.join('\n'),
+            });
+        }
+    }, [flashMessages.data, showToastError]);
     const { search } = useLocation();
     const { identify } = useTracking();
     const redirectUrl = '/';
@@ -128,7 +147,7 @@ const Invite: FC = () => {
         }
     }, [search]);
 
-    if (health.isLoading || inviteLinkQuery.isLoading) {
+    if (health.isInitialLoading || inviteLinkQuery.isInitialLoading) {
         return <PageSpinner />;
     }
 
@@ -172,11 +191,15 @@ const Invite: FC = () => {
         <>
             {ssoLogins}
             {ssoLogins && passwordLogin && (
-                <DividerWrapper>
-                    <Divider />
-                    <b>OR</b>
-                    <Divider />
-                </DividerWrapper>
+                <Divider
+                    my="md"
+                    labelPosition="center"
+                    label={
+                        <Text color="gray.5" size="sm" fw={500}>
+                            OR
+                        </Text>
+                    }
+                />
             )}
             {passwordLogin}
         </>

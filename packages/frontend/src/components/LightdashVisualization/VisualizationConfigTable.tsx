@@ -1,4 +1,4 @@
-import { ChartType, DashboardFilters } from '@lightdash/common';
+import { ChartType, DashboardFilters, ItemsMap } from '@lightdash/common';
 import { FC, useEffect } from 'react';
 import useTableConfig from '../../hooks/tableVisualization/useTableConfig';
 import {
@@ -19,6 +19,7 @@ export const isTableVisualizationConfig = (
 
 type VisualizationTableConfigProps =
     VisualizationConfigCommon<VisualizationConfigTable> & {
+        itemsMap: ItemsMap | undefined;
         columnOrder: string[];
         validPivotDimensions: string[] | undefined;
         pivotTableMaxColumnLimit: number;
@@ -28,7 +29,7 @@ type VisualizationTableConfigProps =
     };
 
 const VisualizationTableConfig: FC<VisualizationTableConfigProps> = ({
-    explore,
+    itemsMap,
     resultsData,
     columnOrder,
     validPivotDimensions,
@@ -43,7 +44,7 @@ const VisualizationTableConfig: FC<VisualizationTableConfigProps> = ({
     const tableConfig = useTableConfig(
         initialChartConfig,
         resultsData,
-        explore,
+        itemsMap,
         columnOrder,
         validPivotDimensions,
         pivotTableMaxColumnLimit,

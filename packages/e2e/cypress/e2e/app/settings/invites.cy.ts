@@ -9,7 +9,7 @@ describe('Settings - Invites', () => {
         cy.findByRole('menuitem', { name: 'Organization settings' }).click();
 
         cy.contains('User management').click();
-        cy.contains('button', 'Add user').click();
+        cy.contains('button', 'Add user').scrollIntoView().click();
         cy.findByLabelText('Enter user email address *').type(
             'demo+marygreen@lightdash.com',
         );
@@ -47,9 +47,10 @@ describe('Settings - Invites', () => {
         cy.contains('User management').click();
         cy.get('table')
             .contains('tr', 'demo+marygreen@lightdash.com')
+            .scrollIntoView()
             .find('.tabler-icon-trash')
             .click({ force: true });
-        cy.findByText('Are you sure you want to delete this user ?')
+        cy.findByText('Are you sure you want to delete this user?')
             .parents('.mantine-Modal-root')
             .findByText('Delete')
             .click();

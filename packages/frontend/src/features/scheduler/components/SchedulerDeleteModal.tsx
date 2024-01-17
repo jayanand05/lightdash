@@ -54,17 +54,13 @@ export const SchedulerDeleteModal: FC<DashboardDeleteModalProps> = ({
             })}
         >
             <Box px="md" py="xl">
-                {scheduler.isLoading || scheduler.error ? (
-                    <>
-                        {scheduler.isLoading ? (
-                            <Stack h={300} w="100%" align="center">
-                                <Text fw={600}>Loading schedulers</Text>
-                                <Loader />
-                            </Stack>
-                        ) : (
-                            <ErrorState error={scheduler.error.error} />
-                        )}
-                    </>
+                {scheduler.isInitialLoading ? (
+                    <Stack h={300} w="100%" align="center">
+                        <Text fw={600}>Loading schedulers</Text>
+                        <Loader />
+                    </Stack>
+                ) : scheduler.isError ? (
+                    <ErrorState error={scheduler.error.error} />
                 ) : (
                     <Text span>
                         Are you sure you want to delete{' '}
@@ -82,7 +78,7 @@ export const SchedulerDeleteModal: FC<DashboardDeleteModalProps> = ({
                     borderTop: `1px solid ${theme.colors.gray[4]}`,
                 })}
             >
-                <Button onClick={onClose} color="gray" variant="outline">
+                <Button onClick={onClose} color="dark" variant="outline">
                     Cancel
                 </Button>
                 {scheduler.isSuccess && (

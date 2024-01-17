@@ -1,11 +1,6 @@
 import { subject } from '@casl/ability';
-import {
-    DashboardFilters,
-    hasCustomDimension,
-    ResultRow,
-    ResultValue,
-} from '@lightdash/common';
-import { Box, Menu, MenuProps, Portal } from '@mantine/core';
+import { hasCustomDimension, ResultRow, ResultValue } from '@lightdash/common';
+import { Box, Menu, MenuProps, Portal, Text } from '@mantine/core';
 import { useClipboard } from '@mantine/hooks';
 import { IconArrowBarToDown, IconCopy, IconStack } from '@tabler/icons-react';
 import { FC } from 'react';
@@ -21,7 +16,6 @@ import { useVisualizationContext } from '../LightdashVisualization/Visualization
 import { useMetricQueryDataContext } from '../MetricQueryData/MetricQueryDataProvider';
 
 export type PieChartContextMenuProps = {
-    dashboardFilters?: DashboardFilters;
     menuPosition?: {
         left: number;
         top: number;
@@ -32,7 +26,6 @@ export type PieChartContextMenuProps = {
 
 const PieChartContextMenu: FC<PieChartContextMenuProps> = ({
     menuPosition,
-    dashboardFilters,
     value,
     rows,
     opened,
@@ -106,7 +99,6 @@ const PieChartContextMenu: FC<PieChartContextMenuProps> = ({
             item: chartConfig.selectedMetric,
             value,
             fieldValues,
-            dashboardFilters,
         });
 
         track({
@@ -140,13 +132,15 @@ const PieChartContextMenu: FC<PieChartContextMenuProps> = ({
             opened={opened}
             onOpen={onOpen}
             onClose={onClose}
-            withArrow
             withinPortal
             shadow="md"
-            position="bottom-end"
-            radius="xs"
+            closeOnItemClick
+            closeOnEscape
+            radius={0}
+            position="right-start"
             offset={{
-                mainAxis: 10,
+                mainAxis: 0,
+                crossAxis: 0,
             }}
         >
             <Portal>
@@ -162,7 +156,7 @@ const PieChartContextMenu: FC<PieChartContextMenuProps> = ({
                     icon={<MantineIcon icon={IconCopy} />}
                     onClick={handleCopy}
                 >
-                    Copy
+                    Copy value
                 </Menu.Item>
 
                 {canViewUnderlyingData && !hasCustomDimension(metricQuery) ? (
@@ -179,7 +173,10 @@ const PieChartContextMenu: FC<PieChartContextMenuProps> = ({
                         icon={<MantineIcon icon={IconArrowBarToDown} />}
                         onClick={handleOpenDrillIntoModal}
                     >
-                        Drill into "{value.formatted}"
+                        Drill into{' '}
+                        <Text span fw={500}>
+                            {value.formatted}
+                        </Text>
                     </Menu.Item>
                 ) : null}
             </Menu.Dropdown>

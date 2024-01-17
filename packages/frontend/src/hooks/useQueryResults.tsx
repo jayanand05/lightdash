@@ -8,9 +8,8 @@ import {
     MetricQuery,
     SortField,
 } from '@lightdash/common';
-import { useFeatureFlagEnabled } from 'posthog-js/react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
-import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { useParams } from 'react-router-dom';
 import { lightdashApi } from '../api';
 import { useDashboardContext } from '../providers/DashboardProvider';
@@ -27,6 +26,7 @@ type QueryResultsProps = {
     query?: MetricQuery;
     csvLimit?: number | null; //giving null returns all results (no limit)
     chartUuid?: string;
+    dateZoomGranularity?: DateGranularity;
 };
 
 const getChartResults = async ({
@@ -78,6 +78,7 @@ const getQueryResults = async ({
     tableId,
     query,
     csvLimit,
+    dateZoomGranularity,
 }: QueryResultsProps) => {
     const timezoneFixQuery = query && {
         ...query,
@@ -87,13 +88,18 @@ const getQueryResults = async ({
     return lightdashApi<ApiQueryResults>({
         url: `/projects/${projectUuid}/explores/${tableId}/runQuery`,
         method: 'POST',
-        body: JSON.stringify({ ...timezoneFixQuery, csvLimit }),
+        body: JSON.stringify({
+            ...timezoneFixQuery,
+            granularity: dateZoomGranularity,
+            csvLimit,
+        }),
     });
 };
 
 export const useQueryResults = (props?: {
     chartUuid?: string;
     isViewOnly?: boolean;
+    dateZoomGranularity?: DateGranularity;
 }) => {
     const { projectUuid } = useParams<{ projectUuid: string }>();
     const setErrorResponse = useQueryError();
@@ -104,17 +110,14 @@ export const useQueryResults = (props?: {
         fetchQuery,
         {
             mutationKey: ['queryResults'],
-            onError: useCallback(
-                (result) => {
-                    showToastError({
-                        title: 'Error running query',
-                        subtitle: result.error.message,
-                    });
+            onError: (error) => {
+                showToastError({
+                    title: 'Error running query',
+                    subtitle: error.error.message,
+                });
 
-                    return setErrorResponse(result);
-                },
-                [setErrorResponse, showToastError],
-            ),
+                return setErrorResponse(error);
+            },
         },
     );
 
@@ -136,6 +139,7 @@ export const useQueryResults = (props?: {
                     tableId: tableName,
                     query: metricQuery,
                     chartUuid: props?.chartUuid,
+                    dateZoomGranularity: props?.dateZoomGranularity,
                 });
             } else {
                 console.warn(
@@ -147,7 +151,12 @@ export const useQueryResults = (props?: {
                 return Promise.reject();
             }
         },
-        [mutateAsync, projectUuid, props?.chartUuid],
+        [
+            mutateAsync,
+            projectUuid,
+            props?.chartUuid,
+            props?.dateZoomGranularity,
+        ],
     );
 
     return useMemo(
@@ -210,7 +219,6 @@ export const useChartAndResults = (
     const setChartsWithDateZoomApplied = useDashboardContext(
         (c) => c.setChartsWithDateZoomApplied,
     );
-    const isDateZoomFeatureEnabled = useFeatureFlagEnabled('date-zoom');
     const queryClient = useQueryClient();
 
     const sortKey =
@@ -257,7 +265,7 @@ export const useChartAndResults = (
     );
 
     setChartsWithDateZoomApplied((prev) => {
-        if (isDateZoomFeatureEnabled && hasADateDimension) {
+        if (hasADateDimension) {
             if (granularity) {
                 return (prev ?? new Set()).add(chartUuid!);
             }
@@ -269,7 +277,7 @@ export const useChartAndResults = (
 
     return useQuery<ApiChartAndResults, ApiError>({
         queryKey:
-            isDateZoomFeatureEnabled && hasADateDimension && granularity
+            hasADateDimension && granularity
                 ? queryKey.concat([granularity])
                 : queryKey,
         queryFn: fetchChartAndResults,
@@ -299,15 +307,12 @@ export const useChartVersionResultsMutation = (
         () => getChartVersionResults(chartUuid, versionUuid!),
         {
             mutationKey: ['chartVersionResults', chartUuid, versionUuid],
-            onError: useCallback(
-                (result) => {
-                    showToastError({
-                        title: 'Error running query',
-                        subtitle: result.error.message,
-                    });
-                },
-                [showToastError],
-            ),
+            onError: (result) => {
+                showToastError({
+                    title: 'Error running query',
+                    subtitle: result.error.message,
+                });
+            },
         },
     );
     const { mutateAsync } = mutation;

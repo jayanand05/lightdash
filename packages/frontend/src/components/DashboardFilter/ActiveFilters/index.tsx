@@ -1,13 +1,23 @@
 import { Group, Skeleton } from '@mantine/core';
 import { FC } from 'react';
 import { useDashboardContext } from '../../../providers/DashboardProvider';
+import { FieldWithSuggestions } from '../../common/Filters/FiltersProvider';
 import Filter from '../Filter';
+import InvalidFilter from '../InvalidFilter';
 
 interface ActiveFiltersProps {
     isEditMode: boolean;
+    openPopoverId: string | undefined;
+    onPopoverOpen: (popoverId: string) => void;
+    onPopoverClose: () => void;
 }
 
-const ActiveFilters: FC<ActiveFiltersProps> = ({ isEditMode }) => {
+const ActiveFilters: FC<ActiveFiltersProps> = ({
+    isEditMode,
+    openPopoverId,
+    onPopoverOpen,
+    onPopoverClose,
+}) => {
     const dashboardFilters = useDashboardContext((c) => c.dashboardFilters);
     const dashboardTemporaryFilters = useDashboardContext(
         (c) => c.dashboardTemporaryFilters,
@@ -44,14 +54,19 @@ const ActiveFilters: FC<ActiveFiltersProps> = ({ isEditMode }) => {
 
     return (
         <>
-            {dashboardFilters.dimensions
-                .filter((item) => !!fieldsWithSuggestions[item.target.fieldId])
-                .map((item, index) => (
+            {dashboardFilters.dimensions.map((item, index) => {
+                const field = fieldsWithSuggestions[item.target.fieldId] as
+                    | FieldWithSuggestions
+                    | undefined;
+                return field ? (
                     <Filter
                         key={item.id}
                         isEditMode={isEditMode}
-                        field={fieldsWithSuggestions[item.target.fieldId]}
+                        field={field}
                         filterRule={item}
+                        openPopoverId={openPopoverId}
+                        onPopoverOpen={onPopoverOpen}
+                        onPopoverClose={onPopoverClose}
                         onRemove={() =>
                             removeDimensionDashboardFilter(index, false)
                         }
@@ -64,17 +79,32 @@ const ActiveFilters: FC<ActiveFiltersProps> = ({ isEditMode }) => {
                             )
                         }
                     />
-                ))}
+                ) : (
+                    <InvalidFilter
+                        key={item.id}
+                        isEditMode={isEditMode}
+                        filterRule={item}
+                        onRemove={() =>
+                            removeDimensionDashboardFilter(index, false)
+                        }
+                    />
+                );
+            })}
 
-            {dashboardTemporaryFilters.dimensions
-                .filter((item) => !!fieldsWithSuggestions[item.target.fieldId])
-                .map((item, index) => (
+            {dashboardTemporaryFilters.dimensions.map((item, index) => {
+                const field = fieldsWithSuggestions[item.target.fieldId] as
+                    | FieldWithSuggestions
+                    | undefined;
+                return field ? (
                     <Filter
                         key={item.id}
                         isTemporary
                         isEditMode={isEditMode}
-                        field={fieldsWithSuggestions[item.target.fieldId]}
+                        field={field}
                         filterRule={item}
+                        openPopoverId={openPopoverId}
+                        onPopoverOpen={onPopoverOpen}
+                        onPopoverClose={onPopoverClose}
                         onRemove={() =>
                             removeDimensionDashboardFilter(index, true)
                         }
@@ -87,7 +117,17 @@ const ActiveFilters: FC<ActiveFiltersProps> = ({ isEditMode }) => {
                             )
                         }
                     />
-                ))}
+                ) : (
+                    <InvalidFilter
+                        key={item.id}
+                        isEditMode={isEditMode}
+                        filterRule={item}
+                        onRemove={() =>
+                            removeDimensionDashboardFilter(index, false)
+                        }
+                    />
+                );
+            })}
         </>
     );
 };

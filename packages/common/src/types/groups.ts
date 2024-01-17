@@ -17,7 +17,9 @@ export type Group = {
     organizationUuid: string;
 };
 
-export type CreateGroup = Pick<Group, 'name' | 'organizationUuid'>;
+export type CreateGroup = Pick<Group, 'name'> & {
+    members?: Pick<GroupMember, 'userUuid'>[];
+};
 
 export type UpdateGroup = Pick<Group, 'name'>;
 
@@ -57,6 +59,12 @@ export type GroupWithMembers = Group & {
      * A list of the group's members.
      */
     members: GroupMember[];
+    memberUuids: string[];
+};
+
+export type UpdateGroupWithMembers = {
+    name?: string;
+    members?: Pick<GroupMember, 'userUuid'>[];
 };
 
 export type ApiGroupMembersResponse = {
@@ -66,10 +74,10 @@ export type ApiGroupMembersResponse = {
 
 export type ApiGroupResponse = {
     status: 'ok';
-    results: Group;
+    results: Group | GroupWithMembers;
 };
 
 export type ApiGroupListResponse = {
     status: 'ok';
-    results: Group[];
+    results: Group[] | GroupWithMembers[];
 };

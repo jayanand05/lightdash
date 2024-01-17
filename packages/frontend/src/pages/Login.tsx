@@ -1,16 +1,17 @@
 import {
     ApiError,
+    getEmailSchema,
     LightdashMode,
     LightdashUser,
     OpenIdIdentityIssuerType,
     SEED_ORG_1_ADMIN_EMAIL,
     SEED_ORG_1_ADMIN_PASSWORD,
-    validateEmail,
 } from '@lightdash/common';
 import {
     Anchor,
     Button,
     Card,
+    Divider,
     Image,
     PasswordInput,
     Stack,
@@ -18,20 +19,21 @@ import {
     TextInput,
     Title,
 } from '@mantine/core';
-import { useForm } from '@mantine/form';
+import { useForm, zodResolver } from '@mantine/form';
+import { useMutation } from '@tanstack/react-query';
 import { FC, useEffect } from 'react';
-import { useMutation } from 'react-query';
 import { Redirect, useLocation } from 'react-router-dom';
 
+import { z } from 'zod';
 import { lightdashApi } from '../api';
 import Page from '../components/common/Page/Page';
 import { ThirdPartySignInButton } from '../components/common/ThirdPartySignInButton';
 import PageSpinner from '../components/PageSpinner';
 import useToaster from '../hooks/toaster/useToaster';
+import { useFlashMessages } from '../hooks/useFlashMessages';
 import { useApp } from '../providers/AppProvider';
 import { useTracking } from '../providers/TrackingProvider';
 import LightdashLogo from '../svgs/lightdash-black.svg';
-import { Divider, DividerWrapper } from './Invite.styles';
 
 type LoginParams = { email: string; password: string };
 
@@ -46,6 +48,17 @@ const LoginContent: FC = () => {
     const location = useLocation<{ from?: Location } | undefined>();
     const { health } = useApp();
     const { showToastError } = useToaster();
+    const flashMessages = useFlashMessages();
+
+    useEffect(() => {
+        if (flashMessages.data?.error) {
+            showToastError({
+                title: 'Failed to authenticate',
+                subtitle: flashMessages.data.error.join('\n'),
+            });
+        }
+    }, [flashMessages.data, showToastError]);
+
     const redirectUrl = location.state?.from
         ? `${location.state.from.pathname}${location.state.from.search}`
         : '/';
@@ -55,10 +68,11 @@ const LoginContent: FC = () => {
             email: '',
             password: '',
         },
-        validate: {
-            email: (value) =>
-                validateEmail(value) ? null : 'Your email address is not valid',
-        },
+        validate: zodResolver(
+            z.object({
+                email: getEmailSchema(),
+            }),
+        ),
     });
 
     const { identify } = useTracking();
@@ -95,7 +109,7 @@ const LoginContent: FC = () => {
         }
     }, [isDemo, mutate, isIdle]);
 
-    if (health.isLoading || isDemo) {
+    if (health.isInitialLoading || isDemo) {
         return <PageSpinner />;
     }
     if (health.status === 'success' && health.data?.requiresOrgRegistration) {
@@ -173,11 +187,15 @@ const LoginContent: FC = () => {
         <>
             {ssoLogins}
             {ssoLogins && passwordLogin && (
-                <DividerWrapper>
-                    <Divider></Divider>
-                    <b>OR</b>
-                    <Divider></Divider>
-                </DividerWrapper>
+                <Divider
+                    my="md"
+                    labelPosition="center"
+                    label={
+                        <Text color="gray.5" size="sm" fw={500}>
+                            OR
+                        </Text>
+                    }
+                />
             )}
             {passwordLogin}
         </>

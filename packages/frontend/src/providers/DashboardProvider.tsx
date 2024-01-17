@@ -15,7 +15,7 @@ import {
     SchedulerFilterRule,
     SortField,
 } from '@lightdash/common';
-import { min } from 'lodash-es';
+import min from 'lodash/min';
 import React, {
     Dispatch,
     SetStateAction,
@@ -28,7 +28,7 @@ import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { useMount } from 'react-use';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { FieldsWithSuggestions } from '../components/common/Filters/FiltersProvider';
-import { isFilterConfigRevertButtonEnabled as hasSavedFilterValueChanged } from '../components/DashboardFilter/FilterConfiguration/utils';
+import { hasSavedFilterValueChanged } from '../components/DashboardFilter/FilterConfiguration/utils';
 import {
     useDashboardQuery,
     useDashboardsAvailableFilters,
@@ -100,9 +100,12 @@ type DashboardContext = {
 
 const Context = createContext<DashboardContext | undefined>(undefined);
 
-export const DashboardProvider: React.FC<{
-    schedulerFilters?: SchedulerFilterRule[] | undefined;
-}> = ({ schedulerFilters, children }) => {
+export const DashboardProvider: React.FC<
+    React.PropsWithChildren<{
+        schedulerFilters?: SchedulerFilterRule[] | undefined;
+        dateZoom?: DateGranularity | undefined;
+    }>
+> = ({ schedulerFilters, dateZoom, children }) => {
     const { search, pathname } = useLocation();
     const history = useHistory();
 
@@ -152,7 +155,8 @@ export const DashboardProvider: React.FC<{
 
     const [dateZoomGranularity, setDateZoomGranularity] = useState<
         DateGranularity | undefined
-    >(undefined);
+    >(dateZoom);
+
     const [chartsWithDateZoomApplied, setChartsWithDateZoomApplied] =
         useState<Set<string>>();
 
@@ -288,11 +292,11 @@ export const DashboardProvider: React.FC<{
         // Date zoom
         const dateZoomParam = searchParams.get('dateZoom');
         if (dateZoomParam) {
-            const dateZoom = Object.values(DateGranularity).find(
+            const dateZoomUrl = Object.values(DateGranularity).find(
                 (granularity) =>
                     granularity.toLowerCase() === dateZoomParam?.toLowerCase(),
             );
-            if (dateZoom) setDateZoomGranularity(dateZoom);
+            if (dateZoomUrl) setDateZoomGranularity(dateZoomUrl);
         }
 
         // Temp filters
@@ -321,7 +325,7 @@ export const DashboardProvider: React.FC<{
     });
 
     const {
-        isLoading: isLoadingDashboardFilters,
+        isInitialLoading: isLoadingDashboardFilters,
         isFetching: isFetchingDashboardFilters,
         data: dashboardAvailableFiltersData,
     } = useDashboardsAvailableFilters(savedChartUuidsAndTileUuids ?? []);
@@ -472,7 +476,7 @@ export const DashboardProvider: React.FC<{
     );
 
     const addMetricDashboardFilter = useCallback(
-        (filter, isTemporary: boolean) => {
+        (filter: DashboardFilterRule, isTemporary: boolean) => {
             const setFunction = isTemporary
                 ? setDashboardTemporaryFilters
                 : setDashboardFilters;

@@ -1,6 +1,7 @@
 import { subject } from '@casl/ability';
 import {
     ChartType,
+    ECHARTS_DEFAULT_COLORS,
     getCustomLabelsFromTableConfig,
     NotFoundError,
 } from '@lightdash/common';
@@ -17,7 +18,6 @@ import CollapsableCard from '../components/common/CollapsableCard';
 import Page from '../components/common/Page/Page';
 import PageBreadcrumbs from '../components/common/PageBreadcrumbs';
 import ShareShortLinkButton from '../components/common/ShareShortLinkButton';
-import SideBarLoadingState from '../components/common/SideBarLoadingState';
 import CatalogTree from '../components/common/SqlRunner/CatalogTree';
 import DownloadSqlCsvButton from '../components/DownloadSqlCsvButton';
 import VisualizationConfigPanel from '../components/Explorer/VisualizationCard/VisualizationConfigPanel';
@@ -27,8 +27,10 @@ import LightdashVisualization from '../components/LightdashVisualization';
 import VisualizationProvider from '../components/LightdashVisualization/VisualizationProvider';
 import RefreshDbtButton from '../components/RefreshDbtButton';
 import RunSqlQueryButton from '../components/SqlRunner/RunSqlQueryButton';
+import SqlRunnerLoadingSkeleton from '../components/SqlRunner/SqlRunerLoadingSkeleton';
 import SqlRunnerInput from '../components/SqlRunner/SqlRunnerInput';
 import SqlRunnerResultsTable from '../components/SqlRunner/SqlRunnerResultsTable';
+import { useOrganization } from '../hooks/organization/useOrganization';
 import { useProjectCatalog } from '../hooks/useProjectCatalog';
 import {
     ProjectCatalogTreeNode,
@@ -56,10 +58,11 @@ enum SqlRunnerCards {
 
 const SqlRunnerPage = () => {
     const { user, health } = useApp();
+    const { data: org } = useOrganization();
     const { projectUuid } = useParams<{ projectUuid: string }>();
     const initialState = useSqlRunnerUrlState();
     const sqlQueryMutation = useSqlQueryMutation();
-    const { isLoading: isCatalogLoading, data: catalogData } =
+    const { isInitialLoading: isCatalogLoading, data: catalogData } =
         useProjectCatalog();
 
     const [sql, setSql] = useState<string>(initialState?.sqlRunner?.sql || '');
@@ -80,7 +83,6 @@ const SqlRunnerPage = () => {
     const { isLoading, mutate } = sqlQueryMutation;
     const {
         initialPivotDimensions,
-        explore,
         resultsData,
         columnOrder,
         createSavedChart,
@@ -170,7 +172,7 @@ const SqlRunnerPage = () => {
         throw new NotFoundError('no SQL query defined');
     };
 
-    if (health.isLoading || !health.data) {
+    if (health.isInitialLoading || !health.data) {
         return null;
     }
 
@@ -205,7 +207,7 @@ const SqlRunnerPage = () => {
                             sx={{ overflowY: 'hidden', flex: 1 }}
                         >
                             {isCatalogLoading ? (
-                                <SideBarLoadingState />
+                                <SqlRunnerLoadingSkeleton />
                             ) : (
                                 <Stack sx={{ overflowY: 'auto', flex: 1 }}>
                                     <Box>
@@ -257,11 +259,11 @@ const SqlRunnerPage = () => {
                     onChartTypeChange={setChartType}
                     onPivotDimensionsChange={setPivotFields}
                     columnOrder={columnOrder}
-                    explore={explore}
                     isSqlRunner={true}
                     pivotTableMaxColumnLimit={
                         health.data.pivotTable.maxColumnLimit
                     }
+                    colorPalette={org?.chartColors ?? ECHARTS_DEFAULT_COLORS}
                 >
                     <CollapsableCard
                         title="Charts"

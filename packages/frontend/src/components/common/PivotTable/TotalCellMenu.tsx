@@ -8,7 +8,7 @@ type TotalCellMenuProps = {
     onCopy: () => void;
 } & Pick<MenuProps, 'opened' | 'onOpen' | 'onClose'>;
 
-const TotalCellMenu: FC<TotalCellMenuProps> = ({
+const TotalCellMenu: FC<React.PropsWithChildren<TotalCellMenuProps>> = ({
     children,
     opened,
     onOpen,
@@ -21,9 +21,11 @@ const TotalCellMenu: FC<TotalCellMenuProps> = ({
             onOpen={onOpen}
             onClose={onClose}
             withinPortal
+            closeOnItemClick
+            closeOnEscape
             shadow="md"
-            position="bottom-end"
             radius={0}
+            position="bottom-end"
             offset={{
                 mainAxis: 0,
                 crossAxis: 0,

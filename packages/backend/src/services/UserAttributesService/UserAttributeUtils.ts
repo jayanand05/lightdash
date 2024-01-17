@@ -4,10 +4,12 @@ export const hasUserAttribute = (
     userAttributes: UserAttributeValueMap,
     attributeName: string,
     value: string,
-) => userAttributes[attributeName] === value;
+): boolean =>
+    !!userAttributes[attributeName] &&
+    userAttributes[attributeName].includes(value);
 
 export const hasUserAttributes = (
-    requiredAttributes: Record<string, string> | undefined,
+    requiredAttributes: Record<string, string | string[]> | undefined,
     userAttributes: UserAttributeValueMap,
 ): boolean => {
     if (requiredAttributes === undefined) return true; // No required attributes
@@ -15,7 +17,13 @@ export const hasUserAttributes = (
     // Check all required attributes conditions for dimension
     return Object.entries(requiredAttributes).every((attribute) => {
         const [attributeName, value] = attribute;
-        return hasUserAttribute(userAttributes, attributeName, value);
+
+        if (typeof value === 'string')
+            return hasUserAttribute(userAttributes, attributeName, value);
+
+        return value.some((v) =>
+            hasUserAttribute(userAttributes, attributeName, v),
+        );
     });
 };
 

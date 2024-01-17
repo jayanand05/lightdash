@@ -12,6 +12,7 @@ import {
     TableCalculation,
 } from './field';
 import { Filters, MetricFilterRule } from './filter';
+import { DateGranularity } from './timeFrames';
 
 export interface AdditionalMetric {
     label?: string;
@@ -45,6 +46,7 @@ export const isCustomDimension = (value: any): value is CustomDimension =>
 
 // Object used to query an explore. Queries only happen within a single explore
 export type MetricQuery = {
+    exploreName: string;
     dimensions: FieldId[]; // Dimensions to group by in the explore
     metrics: FieldId[]; // Metrics to compute in the explore
     filters: Filters;
@@ -99,8 +101,10 @@ type FilterGroupResponse =
 export type FiltersResponse = {
     dimensions?: FilterGroupResponse;
     metrics?: FilterGroupResponse;
+    tableCalculations?: FilterGroupResponse;
 };
 export type MetricQueryResponse = {
+    exploreName: string;
     dimensions: FieldId[]; // Dimensions to group by in the explore
     metrics: FieldId[]; // Metrics to compute in the explore
     filters: FiltersResponse;
@@ -109,6 +113,9 @@ export type MetricQueryResponse = {
     tableCalculations: TableCalculation[]; // calculations to append to results
     additionalMetrics?: AdditionalMetric[]; // existing metric type
     customDimensions?: CustomDimension[];
+    metadata?: {
+        hasADateDimension: Pick<CompiledDimension, 'label' | 'name'>;
+    };
 };
 
 export const countCustomDimensionsInMetricQuery = (
@@ -130,6 +137,7 @@ export const hasCustomDimension = (metricQuery: MetricQuery | undefined) =>
 
 export type MetricQueryRequest = {
     // tsoa doesn't support complex types like MetricQuery, so we simplified it
+    exploreName: string;
     dimensions: FieldId[]; // Dimensions to group by in the explore
     metrics: FieldId[]; // Metrics to compute in the explore
     filters: {
@@ -143,5 +151,6 @@ export type MetricQueryRequest = {
     additionalMetrics?: AdditionalMetric[]; // existing metric type
     csvLimit?: number;
     customDimensions?: CustomDimension[];
+    granularity?: DateGranularity;
     metadata?: MetricQuery['metadata'];
 };

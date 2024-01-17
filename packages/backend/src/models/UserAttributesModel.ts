@@ -4,10 +4,14 @@ import {
     UserAttributeValueMap,
 } from '@lightdash/common';
 import { Knex } from 'knex';
+import { GroupMembershipTableName } from '../database/entities/groupMemberships';
+import { GroupTableName } from '../database/entities/groups';
 import { OrganizationTableName } from '../database/entities/organizations';
 import {
+    DbGroupUserAttribute,
     DbOrganizationMemberUserAttribute,
     DbUserAttribute,
+    GroupUserAttributesTable,
     OrganizationMemberUserAttributesTable,
     UserAttributesTable,
 } from '../database/entities/userAttributes';
@@ -34,7 +38,15 @@ export class UserAttributesModel {
                 `${UserAttributesTable}.organization_id`,
                 `${OrganizationTableName}.organization_id`,
             )
-            .select<Array<Pick<DbUserAttribute, 'name' | 'attribute_default'>>>(
+            .select<
+                Array<
+                    Pick<
+                        DbUserAttribute,
+                        'name' | 'attribute_default' | 'user_attribute_uuid'
+                    >
+                >
+            >(
+                `${UserAttributesTable}.user_attribute_uuid`,
                 `${UserAttributesTable}.name`,
                 `${UserAttributesTable}.attribute_default`,
             )
@@ -80,14 +92,81 @@ export class UserAttributesModel {
             (acc, row) => ({ ...acc, [row.name]: row.value }),
             {},
         );
-        // combine user values and default values
-        return attributeValues.reduce<UserAttributeValueMap>(
+
+        const groupsValues = await this.database(GroupUserAttributesTable)
+            .leftJoin(
+                GroupTableName,
+                `${GroupUserAttributesTable}.group_uuid`,
+                `${GroupTableName}.group_uuid`,
+            )
+            .leftJoin(
+                GroupMembershipTableName,
+                `${GroupTableName}.group_uuid`,
+                `${GroupMembershipTableName}.group_uuid`,
+            )
+            .leftJoin(
+                OrganizationTableName,
+                `${GroupTableName}.organization_id`,
+                `${OrganizationTableName}.organization_id`,
+            )
+            .leftJoin(
+                UserTableName,
+                `${GroupMembershipTableName}.user_id`,
+                `${UserTableName}.user_id`,
+            )
+            .leftJoin(
+                UserAttributesTable,
+                `${GroupUserAttributesTable}.user_attribute_uuid`,
+                `${UserAttributesTable}.user_attribute_uuid`,
+            )
+            .select<
+                Array<
+                    Pick<DbUserAttribute, 'name'> &
+                        Pick<DbGroupUserAttribute, 'value'>
+                >
+            >(
+                `${UserAttributesTable}.name`,
+                `${GroupUserAttributesTable}.value`,
+            )
+            .whereIn(
+                `${GroupUserAttributesTable}.user_attribute_uuid`,
+                attributeValues.map((attr) => attr.user_attribute_uuid),
+            )
+            .where(
+                `${OrganizationTableName}.organization_uuid`,
+                filters.organizationUuid,
+            )
+            .where(`${UserTableName}.user_uuid`, filters.userUuid);
+
+        const groupValuesMap = groupsValues.reduce<Record<string, string[]>>(
             (acc, row) => ({
                 ...acc,
-                [row.name]: userValuesMap[row.name] || row.attribute_default,
+                [row.name]: acc[row.name]
+                    ? [...acc[row.name], row.value]
+                    : [row.value],
             }),
             {},
         );
+
+        // combine group, user and default values
+        return attributeValues.reduce<UserAttributeValueMap>((acc, row) => {
+            const userValue: string | undefined = userValuesMap[row.name];
+            const groupValues: string[] = groupValuesMap[row.name] ?? [];
+            let finalValues: string[];
+            if (userValue) {
+                finalValues = [userValue, ...groupValues];
+            } else if (groupValues.length > 0) {
+                finalValues = groupValues;
+            } else if (row.attribute_default) {
+                finalValues = [row.attribute_default];
+            } else {
+                finalValues = [];
+            }
+            return {
+                ...acc,
+                [row.name]: finalValues,
+            };
+        }, {});
     }
 
     async find(filters: {
@@ -98,6 +177,11 @@ export class UserAttributesModel {
             .leftJoin(
                 OrganizationMemberUserAttributesTable,
                 `${OrganizationMemberUserAttributesTable}.user_attribute_uuid`,
+                `${UserAttributesTable}.user_attribute_uuid`,
+            )
+            .leftJoin(
+                GroupUserAttributesTable,
+                `${GroupUserAttributesTable}.user_attribute_uuid`,
                 `${UserAttributesTable}.user_attribute_uuid`,
             )
             .leftJoin(
@@ -121,6 +205,9 @@ export class UserAttributesModel {
                         user_uuid: string;
                         email: string;
                         organization_uuid: string;
+                    } & {
+                        group_uuid: string;
+                        group_value: string;
                     })[]
             >(
                 `${UserAttributesTable}.*`,
@@ -129,6 +216,8 @@ export class UserAttributesModel {
                 `emails.email`,
                 `users.user_uuid`,
                 `organizations.organization_uuid`,
+                `${GroupUserAttributesTable}.group_uuid`,
+                `${GroupUserAttributesTable}.value as group_value`,
             )
             .orderBy('created_at', 'desc');
 
@@ -149,15 +238,32 @@ export class UserAttributesModel {
 
         const results = orgAttributes.reduce<Record<string, UserAttribute>>(
             (acc, orgAttribute) => {
-                if (
-                    acc[orgAttribute.user_attribute_uuid] &&
-                    orgAttribute.user_id
-                ) {
-                    acc[orgAttribute.user_attribute_uuid].users.push({
-                        userUuid: orgAttribute.user_uuid,
-                        value: orgAttribute.value,
-                        email: orgAttribute.email,
-                    });
+                if (acc[orgAttribute.user_attribute_uuid]) {
+                    // If the user attribute already exists, add the user or group to the list
+                    // unless that user or group is already there
+                    if (
+                        orgAttribute.user_id &&
+                        !acc[orgAttribute.user_attribute_uuid].users.find(
+                            (u) => u.userUuid === orgAttribute.user_uuid,
+                        )
+                    ) {
+                        acc[orgAttribute.user_attribute_uuid].users.push({
+                            userUuid: orgAttribute.user_uuid,
+                            value: orgAttribute.value,
+                            email: orgAttribute.email,
+                        });
+                    }
+                    if (
+                        orgAttribute.group_uuid &&
+                        !acc[orgAttribute.user_attribute_uuid].groups.find(
+                            (g) => g.groupUuid === orgAttribute.group_uuid,
+                        )
+                    ) {
+                        acc[orgAttribute.user_attribute_uuid].groups.push({
+                            groupUuid: orgAttribute.group_uuid,
+                            value: orgAttribute.group_value,
+                        });
+                    }
                     return acc;
                 }
                 return {
@@ -175,6 +281,14 @@ export class UserAttributesModel {
                                       userUuid: orgAttribute.user_uuid,
                                       value: orgAttribute.value,
                                       email: orgAttribute.email,
+                                  },
+                              ]
+                            : [],
+                        groups: orgAttribute.group_uuid
+                            ? [
+                                  {
+                                      groupUuid: orgAttribute.group_uuid,
+                                      value: orgAttribute.group_value,
                                   },
                               ]
                             : [],
@@ -212,6 +326,22 @@ export class UserAttributesModel {
         await Promise.all(promises);
     }
 
+    private static async insertGroupAttributes(
+        trx: Knex.Transaction,
+        userAttributeUuid: string,
+        groups: { groupUuid: string; value: string }[],
+    ): Promise<void> {
+        const promises = groups.map(async (groupAttr) =>
+            trx(GroupUserAttributesTable).insert({
+                group_uuid: groupAttr.groupUuid,
+                user_attribute_uuid: userAttributeUuid,
+                value: groupAttr.value,
+            }),
+        );
+
+        await Promise.all(promises);
+    }
+
     async create(
         organizationUuid: string,
         orgAttribute: CreateUserAttribute,
@@ -237,6 +367,12 @@ export class UserAttributesModel {
                 orgAttribute.users,
             );
 
+            await UserAttributesModel.insertGroupAttributes(
+                trx,
+                inserted.user_attribute_uuid,
+                orgAttribute.groups,
+            );
+
             return inserted.user_attribute_uuid;
         });
         return this.get(attributeUuid);
@@ -251,15 +387,20 @@ export class UserAttributesModel {
             .select('organization_id')
             .where('organization_uuid', organizationUuid);
 
-        // Delete all users,
+        // Delete all users and groups
         // Update the attribute
-        // Add all users back in
+        // Add all users and groups back in
         await this.database.transaction(async (trx) => {
             await trx
                 .delete()
                 .from(OrganizationMemberUserAttributesTable)
                 .where('user_attribute_uuid', orgAttributeUuid)
                 .andWhere('organization_id', organization.organization_id);
+
+            await trx
+                .delete()
+                .from(GroupUserAttributesTable)
+                .where('user_attribute_uuid', orgAttributeUuid);
 
             await trx(UserAttributesTable)
                 .update({
@@ -274,6 +415,12 @@ export class UserAttributesModel {
                 orgAttributeUuid,
                 organization.organization_id,
                 orgAttribute.users,
+            );
+
+            await UserAttributesModel.insertGroupAttributes(
+                trx,
+                orgAttributeUuid,
+                orgAttribute.groups,
             );
         });
 

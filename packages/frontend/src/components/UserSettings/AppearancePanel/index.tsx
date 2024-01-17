@@ -1,10 +1,10 @@
-import { Spinner } from '@blueprintjs/core';
 import { subject } from '@casl/ability';
 import { ECHARTS_DEFAULT_COLORS } from '@lightdash/common';
 import {
     Button,
     ColorInput,
     Flex,
+    Loader,
     SimpleGrid,
     Stack,
     Title,
@@ -24,7 +24,7 @@ const getColorFormFields = (colors: string[]) =>
 
 const AppearancePanel: FC = () => {
     const ability = useAbilityContext();
-    const { isLoading: isOrgLoading, data } = useOrganization();
+    const { isInitialLoading: isOrgLoading, data } = useOrganization();
     const updateMutation = useOrganizationUpdateMutation();
 
     const form = useForm({
@@ -70,7 +70,7 @@ const AppearancePanel: FC = () => {
     });
 
     if (isOrgLoading) {
-        return <Spinner />;
+        return <Loader color="dark" />;
     }
 
     return (

@@ -3,11 +3,23 @@ import {
     Group,
     GroupMembership,
     GroupWithMembers,
+    NotExistsError,
     NotFoundError,
+    ProjectGroupAccess,
     UnexpectedDatabaseError,
-    UpdateGroup,
+    UpdateGroupWithMembers,
 } from '@lightdash/common';
 import { Knex } from 'knex';
+import differenceBy from 'lodash/differenceBy';
+import { EmailTableName } from '../database/entities/emails';
+import { GroupMembershipTableName } from '../database/entities/groupMemberships';
+import { OrganizationTableName } from '../database/entities/organizations';
+import {
+    DBProjectGroupAccess,
+    ProjectGroupAccessTableName,
+    UpdateDBProjectGroupAccess,
+} from '../database/entities/projectGroupAccess';
+import { UserTableName } from '../database/entities/users';
 
 export class GroupsModel {
     database: Knex;
@@ -39,7 +51,9 @@ export class GroupsModel {
         }));
     }
 
-    async createGroup(group: CreateGroup): Promise<Group> {
+    async createGroup(
+        group: CreateGroup & { organizationUuid: string },
+    ): Promise<Group> {
         const results = await this.database.raw<{
             rows: { created_at: Date; group_uuid: string }[];
         }>(
@@ -84,49 +98,68 @@ export class GroupsModel {
         };
     }
 
-    async getGroupWithMembers(groupUuid: string): Promise<GroupWithMembers> {
-        const rows = await this.database('groups')
-            .with('members', (query) => {
-                query
-                    .from('group_memberships')
-                    .innerJoin(
-                        'users',
-                        'group_memberships.user_id',
-                        'users.user_id',
-                    )
-                    .innerJoin('emails', 'users.user_id', 'emails.user_id')
-                    .where('group_memberships.group_uuid', groupUuid)
-                    .andWhere('emails.is_primary', true)
-                    .select(
-                        'group_memberships.group_uuid',
-                        'users.user_uuid',
-                        'users.first_name',
-                        'users.last_name',
-                        'emails.email',
-                    );
-            })
+    async getGroupWithMembers(
+        groupUuid: string,
+        includeMembers?: number,
+        offset?: number,
+    ): Promise<GroupWithMembers> {
+        const group = await this.getGroup(groupUuid);
+
+        const membersQuery = this.database
+            .from(GroupMembershipTableName)
             .innerJoin(
-                'organizations',
-                'groups.organization_id',
-                'organizations.organization_id',
+                UserTableName,
+                `${GroupMembershipTableName}.user_id`,
+                `${UserTableName}.user_id`,
             )
-            .leftJoin('members', 'groups.group_uuid', 'members.group_uuid')
-            .where('groups.group_uuid', groupUuid)
-            .select();
-        if (rows.length === 0) {
-            throw new NotFoundError(`No group found`);
+            .innerJoin(
+                EmailTableName,
+                `${UserTableName}.user_id`,
+                `${EmailTableName}.user_id`,
+            )
+            .innerJoin(
+                OrganizationTableName,
+                `${GroupMembershipTableName}.organization_id`,
+                `${OrganizationTableName}.organization_id`,
+            )
+            .where(`${GroupMembershipTableName}.group_uuid`, groupUuid)
+            .andWhere(`${EmailTableName}.is_primary`, true);
+
+        const memberProfilesQuery = membersQuery.clone();
+
+        if (includeMembers !== undefined) {
+            memberProfilesQuery.limit(includeMembers);
         }
+
+        if (offset !== undefined) {
+            memberProfilesQuery.offset(offset);
+        }
+
+        const memberProfiles = await memberProfilesQuery.select(
+            `${UserTableName}.user_uuid`,
+            `${UserTableName}.first_name`,
+            `${UserTableName}.last_name`,
+            `${EmailTableName}.email`,
+        );
+
+        const memberUuids = await membersQuery.select(
+            this.database.raw(
+                `ARRAY_AGG(${UserTableName}.user_uuid) as member_uuids`,
+            ),
+        );
+
         return {
-            uuid: rows[0].group_uuid,
-            name: rows[0].name,
-            createdAt: rows[0].created_at,
-            organizationUuid: rows[0].organization_uuid,
-            members: (rows[0].user_uuid ? rows : []).map((row) => ({
+            uuid: group.uuid,
+            name: group.name,
+            createdAt: group.createdAt,
+            organizationUuid: group.organizationUuid,
+            members: memberProfiles.map((row) => ({
                 userUuid: row.user_uuid,
                 email: row.email,
                 firstName: row.first_name,
                 lastName: row.last_name,
             })),
+            memberUuids: memberUuids?.[0]?.member_uuids ?? [],
         };
     }
 
@@ -171,38 +204,189 @@ export class GroupsModel {
         return deletedRows.length > 0;
     }
 
-    async updateGroup(groupUuid: string, update: UpdateGroup): Promise<Group> {
-        // Updates with joins not supported by knex
-        const results = await this.database.raw<{
-            rows: {
-                group_uuid: string;
-                name: string;
-                created_at: Date;
-                organization_uuid: string;
-            }[];
-        }>(
-            `
-            UPDATE groups
-            SET name = :name
-            FROM organizations
-            WHERE groups.group_uuid = :groupUuid
-            AND groups.organization_id = organizations.organization_id
-            RETURNING groups.group_uuid, groups.name, groups.created_at, organizations.organization_uuid
-            `,
-            {
-                groupUuid,
-                name: update.name,
-            },
-        );
-        const [updatedGroup] = results.rows;
-        if (updatedGroup === undefined) {
+    async updateGroup(
+        groupUuid: string,
+        update: UpdateGroupWithMembers,
+    ): Promise<Group | GroupWithMembers> {
+        // TODO: fix include member count
+        const existingGroup = await this.getGroupWithMembers(groupUuid, 10000);
+        if (existingGroup === undefined) {
             throw new NotFoundError(`No group found`);
         }
-        return {
-            uuid: updatedGroup.group_uuid,
-            name: updatedGroup.name,
-            createdAt: updatedGroup.created_at,
-            organizationUuid: updatedGroup.organization_uuid,
-        };
+
+        await this.database.transaction(async (trx) => {
+            if (update.name) {
+                await trx('groups')
+                    .update({ name: update.name })
+                    .where('group_uuid', groupUuid);
+            }
+            if (update.members !== undefined) {
+                const membersToAdd = differenceBy(
+                    update.members,
+                    existingGroup.members,
+                    'userUuid',
+                );
+                const membersToRemove = differenceBy(
+                    existingGroup.members,
+                    update.members || [],
+                    'userUuid',
+                );
+                if (membersToAdd.length > 0) {
+                    const newMembers = await trx
+                        .select([
+                            'groups.group_uuid',
+                            'users.user_id',
+                            'organization_memberships.organization_id',
+                        ])
+                        .from('groups')
+                        .innerJoin(
+                            'organization_memberships',
+                            'groups.organization_id',
+                            'organization_memberships.organization_id',
+                        )
+                        .innerJoin(
+                            'users',
+                            'organization_memberships.user_id',
+                            'users.user_id',
+                        )
+                        .whereIn(
+                            'users.user_uuid',
+                            membersToAdd.map((m) => m.userUuid),
+                        )
+                        .andWhere('groups.group_uuid', groupUuid);
+
+                    await trx('group_memberships')
+                        .insert(newMembers)
+                        .onConflict()
+                        .ignore();
+                }
+                if (membersToRemove.length > 0) {
+                    await trx('group_memberships')
+                        .innerJoin(
+                            'users',
+                            'group_memberships.user_id',
+                            'users.user_id',
+                        )
+                        .where('group_uuid', groupUuid)
+                        .whereIn(
+                            'users.user_uuid',
+                            membersToRemove.map((m) => m.userUuid),
+                        )
+                        .del();
+                }
+            }
+        });
+        // TODO: fix include member count
+        return this.getGroupWithMembers(groupUuid, 10000);
+    }
+
+    async addProjectAccess({
+        groupUuid,
+        projectUuid,
+        role,
+    }: ProjectGroupAccess): Promise<DBProjectGroupAccess> {
+        const query = this.database(ProjectGroupAccessTableName)
+            .insert({ group_uuid: groupUuid, project_uuid: projectUuid, role })
+            .onConflict()
+            .ignore()
+            .returning('*');
+
+        const rows = await query;
+
+        if (rows.length === 0) {
+            throw new UnexpectedDatabaseError(`Failed to add project access`);
+        }
+
+        const [row] = rows;
+        return row;
+    }
+
+    async removeProjectAccess({
+        projectUuid,
+        groupUuid,
+    }: Pick<
+        ProjectGroupAccess,
+        'groupUuid' | 'projectUuid'
+    >): Promise<boolean> {
+        const query = this.database(ProjectGroupAccessTableName)
+            .delete()
+            .where('project_uuid', projectUuid)
+            .andWhere('group_uuid', groupUuid)
+            .returning('*');
+
+        const rows = await query;
+
+        return rows.length > 0;
+    }
+
+    async updateProjectAccess(
+        {
+            projectUuid,
+            groupUuid,
+        }: Pick<ProjectGroupAccess, 'groupUuid' | 'projectUuid'>,
+        updateAttributes: UpdateDBProjectGroupAccess,
+    ): Promise<DBProjectGroupAccess> {
+        const query = this.database(ProjectGroupAccessTableName)
+            .update(updateAttributes)
+            .where('project_uuid', projectUuid)
+            .andWhere('group_uuid', groupUuid)
+            .returning('*');
+
+        const rows = await query;
+
+        if (rows.length === 0) {
+            throw new UnexpectedDatabaseError(
+                `Failed to update project access`,
+            );
+        }
+
+        const [row] = rows;
+        return row;
+    }
+
+    async addUserToGroupsIfExist({
+        userUuid,
+        groups,
+        organizationUuid,
+    }: {
+        userUuid: string;
+        groups: string[];
+        organizationUuid: string;
+    }) {
+        const organization = await this.database('organizations')
+            .where('organization_uuid', organizationUuid)
+            .first('organization_id');
+        if (!organization) {
+            throw new NotExistsError('Cannot find organization');
+        }
+
+        const existingGroups = await this.database('groups')
+            .whereIn('name', groups)
+            .andWhere('organization_id', organization.organization_id)
+            .select('group_uuid', 'organization_id');
+
+        if (existingGroups.length === 0) {
+            return;
+        }
+
+        const userIdToInsert = (
+            await this.database('users')
+                .where('user_uuid', userUuid)
+                .first('user_id')
+        )?.user_id;
+        if (!userIdToInsert) {
+            throw new NotExistsError('Cannot find user');
+        }
+
+        const insertData = existingGroups.map((group) => ({
+            group_uuid: group.group_uuid,
+            user_id: userIdToInsert,
+            organization_id: organization.organization_id,
+        }));
+
+        await this.database('group_memberships')
+            .insert(insertData)
+            .onConflict()
+            .ignore();
     }
 }

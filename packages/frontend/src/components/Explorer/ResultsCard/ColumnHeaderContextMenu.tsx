@@ -7,7 +7,7 @@ import {
     isFilterableField,
     TableCalculation,
 } from '@lightdash/common';
-import { ActionIcon, Menu } from '@mantine/core';
+import { ActionIcon, Menu, Text } from '@mantine/core';
 import {
     IconChevronDown,
     IconFilter,
@@ -15,17 +15,16 @@ import {
     IconTrash,
 } from '@tabler/icons-react';
 import { FC, useMemo, useState } from 'react';
+import {
+    DeleteTableCalculationModal,
+    UpdateTableCalculationModal,
+} from '../../../features/tableCalculation';
 import { useFilters } from '../../../hooks/useFilters';
 import { useExplorerContext } from '../../../providers/ExplorerProvider';
 import { useTracking } from '../../../providers/TrackingProvider';
 import { EventName } from '../../../types/Events';
 import MantineIcon from '../../common/MantineIcon';
 import { HeaderProps, TableColumn } from '../../common/Table/types';
-import {
-    DeleteTableCalculationModal,
-    UpdateTableCalculationModal,
-} from '../../TableCalculationModals';
-import { BolderLabel } from './ColumnHeaderContextMenu.styles';
 import ColumnHeaderSortMenuOptions from './ColumnHeaderSortMenuOptions';
 
 interface ContextMenuProps extends HeaderProps {
@@ -89,7 +88,10 @@ const ContextMenu: FC<ContextMenuProps> = ({
                         addFilter(item, undefined, false);
                     }}
                 >
-                    Filter by <BolderLabel>{item.label}</BolderLabel>
+                    Filter by{' '}
+                    <Text span fw={500}>
+                        {item.label}
+                    </Text>
                 </Menu.Item>
 
                 <Menu.Divider />
@@ -220,7 +222,7 @@ const ColumnHeaderContextMenu: FC<HeaderProps> = ({ header }) => {
                     e.stopPropagation();
                 }}
             >
-                <Menu withinPortal withArrow>
+                <Menu withinPortal withArrow shadow="md">
                     <Menu.Target>
                         <ActionIcon size="xs" variant="light" bg="transparent">
                             <MantineIcon icon={IconChevronDown} />
@@ -238,7 +240,7 @@ const ColumnHeaderContextMenu: FC<HeaderProps> = ({ header }) => {
 
                 {showUpdate && (
                     <UpdateTableCalculationModal
-                        isOpen
+                        opened
                         tableCalculation={item as TableCalculation}
                         onClose={() => setShowUpdate(false)}
                     />
@@ -246,7 +248,6 @@ const ColumnHeaderContextMenu: FC<HeaderProps> = ({ header }) => {
 
                 {showDelete && (
                     <DeleteTableCalculationModal
-                        isOpen
                         tableCalculation={item as TableCalculation}
                         onClose={() => setShowDelete(false)}
                     />

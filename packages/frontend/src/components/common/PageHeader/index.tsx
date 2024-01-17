@@ -1,33 +1,20 @@
-import { Colors, H4, Icon } from '@blueprintjs/core';
 import styled from 'styled-components';
 
 export const PageTitleAndDetailsContainer = styled.div`
     flex: 1;
 `;
 
-export const PageTitle = styled(H4)`
-    margin: 4px 5px 4px 0;
-`;
-
-export const PageTitleContainer = styled.div`
-    display: flex;
-    align-items: center;
-`;
-
+// FIXME: colors in this file are hardcoded to mantine values.
+// We should use the theme when we aren't using styled components.
+// #868e96 is gray.6
 export const PageDetailsContainer = styled.div`
     margin-top: 0.38em;
     display: flex;
     align-items: center;
-    color: ${Colors.GRAY2};
+    color: #868e96;
     font-size: 12px;
     font-weight: 400;
     line-height: 14px;
-`;
-
-export const SeparatorDot = styled(Icon)`
-    margin-left: 11px;
-    margin-right: 11px;
-    color: ${Colors.GRAY4};
 `;
 
 export const InfoContainer = styled.div`
@@ -35,17 +22,17 @@ export const InfoContainer = styled.div`
     align-items: center;
     gap: 4px;
 
-    color: ${Colors.GRAY2};
+    color: #868e96;
     font-size: 12px;
     line-height: 14px;
 
     svg: {
-        stroke: ${Colors.GRAY2} !important;
+        stroke: #868e96 !important;
     }
 `;
 
 export const UpdatedInfoLabel = styled.p`
-    color: ${Colors.GRAY2};
+    color: #868e96;
     font-size: 12px;
     font-weight: 400;
     line-height: 14px;

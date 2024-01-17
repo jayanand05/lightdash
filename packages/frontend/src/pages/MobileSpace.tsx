@@ -1,4 +1,3 @@
-import { NonIdealState } from '@blueprintjs/core';
 import {
     ResourceViewItem,
     ResourceViewItemType,
@@ -15,6 +14,7 @@ import MantineIcon from '../components/common/MantineIcon';
 import PageBreadcrumbs from '../components/common/PageBreadcrumbs';
 import ResourceView from '../components/common/ResourceView';
 import { SortDirection } from '../components/common/ResourceView/ResourceViewList';
+import SuboptimalState from '../components/common/SuboptimalState/SuboptimalState';
 import ForbiddenPanel from '../components/ForbiddenPanel';
 import { useSpace } from '../hooks/useSpaces';
 import { useApp } from '../providers/AppProvider';
@@ -24,7 +24,11 @@ const MobileSpace: FC = () => {
         projectUuid: string;
         spaceUuid: string;
     }>();
-    const { data: space, isLoading, error } = useSpace(projectUuid, spaceUuid);
+    const {
+        data: space,
+        isInitialLoading,
+        error,
+    } = useSpace(projectUuid, spaceUuid);
     const { user } = useApp();
     const [search, setSearch] = useState<string>('');
     const visibleItems = useMemo(() => {
@@ -55,7 +59,7 @@ const MobileSpace: FC = () => {
         return <ForbiddenPanel />;
     }
 
-    if (isLoading) {
+    if (isInitialLoading) {
         return <LoadingState title="Loading space" />;
     }
 
@@ -66,7 +70,7 @@ const MobileSpace: FC = () => {
     if (space === undefined) {
         return (
             <div style={{ marginTop: '20px' }}>
-                <NonIdealState
+                <SuboptimalState
                     title="Space does not exist"
                     description={`We could not find space with uuid ${spaceUuid}`}
                 />

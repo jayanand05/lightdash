@@ -108,6 +108,7 @@ export const chart: SavedChart = {
     name: 'chart name',
     tableName: 'table_name',
     metricQuery: {
+        exploreName: 'table_name',
         dimensions: [],
         metrics: [],
         filters: {},
@@ -129,6 +130,7 @@ export const chart: SavedChart = {
     pinnedListOrder: null,
     dashboardUuid: dashboard.uuid,
     dashboardName: dashboard.name,
+    colorPalette: [],
 };
 
 export const dashboardsDetails: DashboardBasicDetails[] = [

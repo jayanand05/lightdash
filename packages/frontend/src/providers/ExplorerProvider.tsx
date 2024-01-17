@@ -22,9 +22,10 @@ import {
     TableCalculation,
     TableChartConfig,
     toggleArrayValue,
+    updateFieldIdInFilters,
 } from '@lightdash/common';
 import produce from 'immer';
-import cloneDeep from 'lodash-es/cloneDeep';
+import cloneDeep from 'lodash/cloneDeep';
 import { FC, useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { useHistory } from 'react-router-dom';
 import { createContext, useContextSelector } from 'use-context-selector';
@@ -302,6 +303,7 @@ const defaultState: ExplorerReduceState = {
     unsavedChartVersion: {
         tableName: '',
         metricQuery: {
+            exploreName: '',
             dimensions: [],
             metrics: [],
             filters: {},
@@ -885,6 +887,22 @@ function reducer(
                                       }
                                     : sortField,
                         ),
+                        filters: Object.entries(
+                            state.unsavedChartVersion.metricQuery.filters,
+                        ).reduce((acc, [key, value]) => {
+                            let valueDeepCopy = cloneDeep(value);
+                            if (key === 'metrics') {
+                                updateFieldIdInFilters(
+                                    valueDeepCopy,
+                                    action.payload.previousAdditionalMetricName,
+                                    additionalMetricFieldId,
+                                );
+                            }
+                            return {
+                                ...acc,
+                                [key]: valueDeepCopy,
+                            };
+                        }, {}),
                     },
                     tableConfig: {
                         ...state.unsavedChartVersion.tableConfig,
@@ -1130,14 +1148,16 @@ type ConfigCacheMap = {
     [ChartType.CUSTOM]: CustomVisConfig['config'];
 };
 
-export const ExplorerProvider: FC<{
-    isEditMode?: boolean;
-    initialState?: ExplorerReduceState;
-    savedChart?: SavedChart;
-    queryResults: ReturnType<
-        typeof useQueryResults | typeof useChartVersionResultsMutation
-    >;
-}> = ({
+export const ExplorerProvider: FC<
+    React.PropsWithChildren<{
+        isEditMode?: boolean;
+        initialState?: ExplorerReduceState;
+        savedChart?: SavedChart;
+        queryResults: ReturnType<
+            typeof useQueryResults | typeof useChartVersionResultsMutation
+        >;
+    }>
+> = ({
     isEditMode = false,
     initialState,
     savedChart,

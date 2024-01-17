@@ -1,4 +1,3 @@
-import { Intent, NonIdealState } from '@blueprintjs/core';
 import { subject } from '@casl/ability';
 import {
     LightdashMode,
@@ -8,6 +7,8 @@ import {
 import { ActionIcon, Box, Group, Menu, Stack } from '@mantine/core';
 import {
     IconDots,
+    IconFolderCog,
+    IconFolderX,
     IconLayoutDashboard,
     IconPlus,
     IconSquarePlus,
@@ -27,6 +28,7 @@ import ShareSpaceModal from '../components/common/ShareSpaceModal';
 import SpaceActionModal, {
     ActionType,
 } from '../components/common/SpaceActionModal';
+import SuboptimalState from '../components/common/SuboptimalState/SuboptimalState';
 import AddResourceToSpaceModal, {
     AddToSpaceResources,
 } from '../components/Explorer/SpaceBrowser/AddResourceToSpaceModal';
@@ -44,10 +46,14 @@ const Space: FC = () => {
         projectUuid: string;
         spaceUuid: string;
     }>();
-    const { data: space, isLoading, error } = useSpace(projectUuid, spaceUuid);
-    const { data: dashboards = [], isLoading: dashboardsLoading } =
+    const {
+        data: space,
+        isInitialLoading,
+        error,
+    } = useSpace(projectUuid, spaceUuid);
+    const { data: dashboards = [], isInitialLoading: dashboardsLoading } =
         useDashboards(projectUuid);
-    const { data: savedCharts = [], isLoading: chartsLoading } =
+    const { data: savedCharts = [], isInitialLoading: chartsLoading } =
         useChartSummaries(projectUuid);
     const { mutate: pinSpace } = useSpacePinningMutation(projectUuid);
     const { user, health } = useApp();
@@ -88,7 +94,7 @@ const Space: FC = () => {
         return <ForbiddenPanel />;
     }
 
-    if (isLoading || chartsLoading || dashboardsLoading) {
+    if (isInitialLoading || chartsLoading || dashboardsLoading) {
         return <LoadingState title="Loading space" />;
     }
 
@@ -99,7 +105,7 @@ const Space: FC = () => {
     if (space === undefined) {
         return (
             <div style={{ marginTop: '20px' }}>
-                <NonIdealState
+                <SuboptimalState
                     title="Space does not exist"
                     description={`We could not find space with uuid ${spaceUuid}`}
                 />
@@ -279,7 +285,7 @@ const Space: FC = () => {
                                     actionType={ActionType.UPDATE}
                                     title="Update space"
                                     confirmButtonLabel="Update"
-                                    icon="folder-close"
+                                    icon={IconFolderCog}
                                     onClose={() => setUpdateSpace(false)}
                                 />
                             )}
@@ -290,8 +296,8 @@ const Space: FC = () => {
                                     actionType={ActionType.DELETE}
                                     title="Delete space"
                                     confirmButtonLabel="Delete"
-                                    confirmButtonIntent={Intent.DANGER}
-                                    icon="folder-close"
+                                    confirmButtonColor="red"
+                                    icon={IconFolderX}
                                     onSubmitForm={() => {
                                         if (
                                             location.pathname.includes(
@@ -353,7 +359,6 @@ const Space: FC = () => {
 
                 {addToSpace && (
                     <AddResourceToSpaceModal
-                        isOpen
                         resourceType={addToSpace}
                         onClose={() => setAddToSpace(undefined)}
                     />

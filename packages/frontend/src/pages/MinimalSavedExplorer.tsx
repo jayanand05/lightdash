@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import LightdashVisualization from '../components/LightdashVisualization';
 import VisualizationProvider from '../components/LightdashVisualization/VisualizationProvider';
-import { useExplore } from '../hooks/useExplore';
+import { useDateZoomGranularitySearch } from '../hooks/useExplorerRoute';
 import { useQueryResults } from '../hooks/useQueryResults';
 import { useSavedQuery } from '../hooks/useSavedQuery';
 import { useApp } from '../providers/AppProvider';
@@ -39,9 +39,7 @@ const MinimalExplorer: FC = () => {
         (context) => context.queryResults.isLoading,
     );
 
-    const { data: explore } = useExplore(savedChart?.tableName);
-
-    if (!savedChart || health.isLoading || !health.data) {
+    if (!savedChart || health.isInitialLoading || !health.data) {
         return null;
     }
 
@@ -50,12 +48,12 @@ const MinimalExplorer: FC = () => {
             minimal
             chartConfig={savedChart.chartConfig}
             initialPivotDimensions={savedChart.pivotConfig?.columns}
-            explore={explore}
             resultsData={queryResults}
             isLoading={isLoadingQueryResults}
             columnOrder={savedChart.tableConfig.columnOrder}
             pivotTableMaxColumnLimit={health.data.pivotTable.maxColumnLimit}
             savedChartUuid={savedChart.uuid}
+            colorPalette={savedChart.colorPalette}
         >
             <MantineProvider inherit theme={themeOverride}>
                 <StyledLightdashVisualization
@@ -74,15 +72,19 @@ const MinimalSavedExplorer: FC = () => {
         projectUuid: string;
     }>();
 
-    const { data, isLoading, isError, error } = useSavedQuery({
+    const { data, isInitialLoading, isError, error } = useSavedQuery({
         id: savedQueryUuid,
     });
+
+    const dateZoomGranularity = useDateZoomGranularitySearch();
+
     const queryResults = useQueryResults({
         chartUuid: savedQueryUuid,
         isViewOnly: true,
+        dateZoomGranularity,
     });
 
-    if (isLoading) {
+    if (isInitialLoading) {
         return null;
     }
 

@@ -12,6 +12,7 @@ import {
     INVALID_ID_COLUMN_NAMES,
     LIGHTDASH_TABLE_SQL_WHERE,
     LIGHTDASH_TABLE_WITHOUT_AUTO_METRICS,
+    LIGHTDASH_TABLE_WITH_ADDITIONAL_DIMENSIONS,
     LIGHTDASH_TABLE_WITH_CUSTOM_TIME_INTERVAL_DIMENSIONS,
     LIGHTDASH_TABLE_WITH_DBT_METRICS,
     LIGHTDASH_TABLE_WITH_DBT_V9_METRICS,
@@ -21,6 +22,7 @@ import {
     LIGHTDASH_TABLE_WITH_METRICS,
     LIGHTDASH_TABLE_WITH_OFF_TIME_INTERVAL_DIMENSIONS,
     model,
+    MODEL_WITH_ADDITIONAL_DIMENSIONS,
     MODEL_WITH_CUSTOM_TIME_INTERVAL_DIMENSIONS,
     MODEL_WITH_DEFAULT_TIME_INTERVAL_DIMENSIONS,
     MODEL_WITH_GROUP_LABEL,
@@ -244,15 +246,6 @@ describe('convert tables from dbt models', () => {
             'Found multiple metrics and a dimensions with the same name: user_id,user_id2',
         );
     });
-    it('should throw an error when table is not compiled by dbt', async () => {
-        expect(() =>
-            convertTable(
-                SupportedDbtAdapter.BIGQUERY,
-                { ...model, compiled: false },
-                [],
-            ),
-        ).toThrowError('Model has not been compiled by dbt');
-    });
 
     it('should convert dbt model with group label', async () => {
         expect(
@@ -282,5 +275,15 @@ describe('convert tables from dbt models', () => {
                 [],
             ),
         ).toStrictEqual(LIGHTDASH_TABLE_SQL_WHERE);
+    });
+
+    it('should convert dbt model with dimension and additional dimensions', () => {
+        expect(
+            convertTable(
+                SupportedDbtAdapter.POSTGRES,
+                MODEL_WITH_ADDITIONAL_DIMENSIONS,
+                [],
+            ),
+        ).toStrictEqual(LIGHTDASH_TABLE_WITH_ADDITIONAL_DIMENSIONS);
     });
 });

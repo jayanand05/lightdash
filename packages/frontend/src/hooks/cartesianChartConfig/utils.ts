@@ -2,10 +2,11 @@ import {
     ApiQueryResults,
     CartesianSeriesType,
     DimensionType,
-    Explore,
-    getDimensions,
+    getDimensionsFromItemsMap,
     getItemId,
     getSeriesId,
+    isDimension,
+    ItemsMap,
     Series,
 } from '@lightdash/common';
 import { getPivotedData } from '../plottedData/getPlottedData';
@@ -21,6 +22,7 @@ export type GetExpectedSeriesMapArgs = {
     yFields: string[];
     xField: string;
     availableDimensions: string[];
+    defaultLabel?: Series['label'];
 };
 
 export const getExpectedSeriesMap = ({
@@ -34,6 +36,7 @@ export const getExpectedSeriesMap = ({
     yFields,
     xField,
     availableDimensions,
+    defaultLabel,
 }: GetExpectedSeriesMapArgs) => {
     let expectedSeriesMap: Record<string, Series>;
 
@@ -43,6 +46,7 @@ export const getExpectedSeriesMap = ({
         type: defaultCartesianType,
         areaStyle: defaultAreaStyle,
         yAxisIndex: 0,
+        label: defaultLabel,
     };
     if (pivotKeys && pivotKeys.length > 0) {
         const { rowKeyMap } = getPivotedData(
@@ -200,17 +204,18 @@ export const getSeriesGroupedByField = (series: Series[]) => {
 
 export const sortDimensions = (
     dimensionIds: string[],
-    explore: Explore | undefined,
+    itemsMap: ItemsMap | undefined,
     columnOrder: string[],
 ) => {
-    if (!explore) return dimensionIds;
+    if (!itemsMap) return dimensionIds;
 
     if (dimensionIds.length <= 1) return dimensionIds;
 
-    const dimensions = getDimensions(explore);
+    const dimensions = Object.values(getDimensionsFromItemsMap(itemsMap));
 
     const dateDimensions = dimensions.filter(
         (dimension) =>
+            isDimension(dimension) &&
             dimensionIds.includes(getItemId(dimension)) &&
             [DimensionType.DATE, DimensionType.TIMESTAMP].includes(
                 dimension.type,

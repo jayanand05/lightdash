@@ -59,7 +59,7 @@ const DashboardCreateModal: FC<DashboardCreateModalProps> = ({
 
     const {
         data: spaces,
-        isLoading: isLoadingSpaces,
+        isInitialLoading: isLoadingSpaces,
         isSuccess,
     } = useSpaceSummaries(projectUuid, true, {
         staleTime: 0,
@@ -180,8 +180,6 @@ const DashboardCreateModal: FC<DashboardCreateModalProps> = ({
                                         },
                                     }}
                                     onSearchChange={(query) => {
-                                        console.log('changed', query);
-
                                         if (!query) {
                                             setFieldValue(
                                                 'isCreatingNewSpace',

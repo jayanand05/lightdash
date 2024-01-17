@@ -2,6 +2,7 @@ import {
     ApiCalculateTotalResponse,
     ApiChartSummaryListResponse,
     ApiErrorPayload,
+    ApiGetProjectGroupAccesses,
     ApiGetProjectMemberResponse,
     ApiProjectAccessListResponse,
     ApiProjectResponse,
@@ -10,6 +11,7 @@ import {
     ApiSuccessEmpty,
     CalculateTotalFromQuery,
     CreateProjectMember,
+    DbtExposure,
     UpdateProjectMember,
 } from '@lightdash/common';
 import {
@@ -17,6 +19,7 @@ import {
     Controller,
     Delete,
     Get,
+    Hidden,
     Middlewares,
     OperationId,
     Patch,
@@ -238,6 +241,28 @@ export class ProjectController extends Controller {
     }
 
     /**
+     * List group access for projects
+     */
+    @Middlewares([allowApiKeyAuthentication, isAuthenticated])
+    @SuccessResponse('200', 'Success')
+    @Get('{projectUuid}/groupAccesses')
+    @OperationId('GetProjectGroupAccesses')
+    async getProjectGroupAccesses(
+        @Path() projectUuid: string,
+        @Request() req: express.Request,
+    ): Promise<ApiGetProjectGroupAccesses> {
+        this.setStatus(200);
+        const results = await projectService.getProjectGroupAccesses(
+            req.user!,
+            projectUuid,
+        );
+        return {
+            status: 'ok',
+            results,
+        };
+    }
+
+    /**
      * Run a raw sql query against the project's warehouse connection
      * @param projectUuid The uuid of the project to run the query against
      * @param body The query to run
@@ -292,6 +317,26 @@ export class ProjectController extends Controller {
         return {
             status: 'ok',
             results: totalResult,
+        };
+    }
+
+    @Middlewares([allowApiKeyAuthentication, isAuthenticated])
+    @SuccessResponse('200', 'Success')
+    @Get('{projectUuid}/dbt-exposures')
+    @OperationId('GetDbtExposures')
+    @Hidden()
+    async GetDbtExposures(
+        @Path() projectUuid: string,
+        @Request() req: express.Request,
+    ): Promise<{ status: 'ok'; results: Record<string, DbtExposure> }> {
+        this.setStatus(200);
+        const exposures = await projectService.getDbtExposures(
+            req.user!,
+            projectUuid,
+        );
+        return {
+            status: 'ok',
+            results: exposures,
         };
     }
 }

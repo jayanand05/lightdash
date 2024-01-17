@@ -7,7 +7,6 @@ import {
     DimensionType,
     DownloadCsvPayload,
     DownloadMetricCsv,
-    Field,
     ForbiddenError,
     formatItemValue,
     friendlyName,
@@ -22,12 +21,12 @@ import {
     isField,
     isMomentInput,
     isTableChartConfig,
+    ItemsMap,
     MetricQuery,
     SchedulerCsvOptions,
     SchedulerFilterRule,
     SchedulerFormat,
     SessionUser,
-    TableCalculation,
 } from '@lightdash/common';
 
 import { stringify } from 'csv-stringify';
@@ -160,7 +159,7 @@ export class CsvService {
 
     static convertRowToCsv(
         row: Record<string, any>,
-        itemMap: Record<string, Field | TableCalculation>,
+        itemMap: ItemsMap,
         onlyRaw: boolean,
         sortedFieldIds: string[],
     ) {
@@ -204,11 +203,17 @@ export class CsvService {
         return fileId;
     }
 
+    static isValidCsvFileId(fileId: string): boolean {
+        return /^csv-(incomplete_results-)?[a-z0-9_]+-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-\d{4}\.csv$/.test(
+            fileId,
+        );
+    }
+
     static async writeRowsToFile(
         rows: Record<string, any>[],
         onlyRaw: boolean,
         metricQuery: MetricQuery,
-        itemMap: Record<string, Field | TableCalculation>,
+        itemMap: ItemsMap,
         showTableNames: boolean,
         fileName: string,
         truncated: boolean,
@@ -613,8 +618,22 @@ export class CsvService {
             throw new ForbiddenError();
         }
 
+        // If the user can't change the csv limit, default csvLimit to undefined
+        // csvLimit undefined means that we will be using the limit from the metricQuery
+        // csvLimit null means all rows
+        const csvLimit = user.ability.cannot(
+            'manage',
+            subject('ChangeCsvResults', {
+                organizationUuid: user.organizationUuid,
+                projectUuid: csvOptions.projectUuid,
+            }),
+        )
+            ? undefined
+            : csvOptions.csvLimit;
+
         const payload: DownloadCsvPayload = {
             ...csvOptions,
+            csvLimit,
             userUuid: user.userUuid,
         };
         const { jobId } = await schedulerClient.downloadCsvJob(payload);

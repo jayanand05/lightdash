@@ -1,8 +1,7 @@
-import { Colors } from '@blueprintjs/core';
 import { ComparisonDiffTypes } from '@lightdash/common';
-import { Tooltip } from '@mantine/core';
+import { Tooltip, useMantineTheme } from '@mantine/core';
 import { IconArrowDownRight, IconArrowUpRight } from '@tabler/icons-react';
-import clamp from 'lodash-es/clamp';
+import clamp from 'lodash/clamp';
 import { FC, HTMLAttributes, useMemo } from 'react';
 import { useResizeObserver } from '../../hooks/useResizeObserver';
 import MantineIcon from '../common/MantineIcon';
@@ -11,7 +10,6 @@ import { isBigNumberVisualizationConfig } from '../LightdashVisualization/Visual
 import { useVisualizationContext } from '../LightdashVisualization/VisualizationProvider';
 import { EmptyChart, LoadingChart } from '../SimpleChart';
 import BigNumberContextMenu from './BigNumberContextMenu';
-import BigNumberDashboardContextMenu from './BigNumberDashboardContextMenu';
 import {
     BigNumber,
     BigNumberContainer,
@@ -23,7 +21,6 @@ interface SimpleStatisticsProps extends HTMLAttributes<HTMLDivElement> {
     minimal?: boolean;
     isTitleHidden?: boolean;
     isDashboard?: boolean;
-    tileUuid?: string;
 }
 
 const BOX_MIN_WIDTH = 150;
@@ -67,9 +64,10 @@ const SimpleStatistic: FC<SimpleStatisticsProps> = ({
     minimal = false,
     isTitleHidden = false,
     isDashboard = false,
-    tileUuid,
     ...wrapperProps
 }) => {
+    const theme = useMantineTheme();
+
     const { resultsData, isLoading, visualizationConfig, isSqlRunner } =
         useVisualizationContext();
 
@@ -126,15 +124,21 @@ const SimpleStatistic: FC<SimpleStatisticsProps> = ({
         switch (comparisonDiff) {
             case ComparisonDiffTypes.NAN:
             case ComparisonDiffTypes.UNDEFINED:
-                return Colors.GRAY3;
+                return theme.colors.gray[5];
             case ComparisonDiffTypes.POSITIVE:
-                return flipColors ? Colors.RED3 : Colors.GREEN3;
+                return flipColors ? theme.colors.red[7] : theme.colors.green[8];
             case ComparisonDiffTypes.NEGATIVE:
-                return flipColors ? Colors.GREEN3 : Colors.RED3;
+                return flipColors ? theme.colors.green[8] : theme.colors.red[7];
             case ComparisonDiffTypes.NONE:
                 return 'inherit';
         }
-    }, [isBigNumber, visualizationConfig]);
+    }, [
+        isBigNumber,
+        theme.colors.gray,
+        theme.colors.green,
+        theme.colors.red,
+        visualizationConfig.chartConfig,
+    ]);
 
     if (!isBigNumber) return null;
 
@@ -165,12 +169,6 @@ const SimpleStatistic: FC<SimpleStatisticsProps> = ({
             <BigNumberHalf>
                 {minimal || isSqlRunner ? (
                     <BigNumber $fontSize={valueFontSize}>{bigNumber}</BigNumber>
-                ) : isDashboard && tileUuid ? (
-                    <BigNumberDashboardContextMenu tileUuid={tileUuid}>
-                        <BigNumber $interactive $fontSize={valueFontSize}>
-                            {bigNumber}
-                        </BigNumber>
-                    </BigNumberDashboardContextMenu>
                 ) : (
                     <BigNumberContextMenu>
                         <BigNumber $interactive $fontSize={valueFontSize}>

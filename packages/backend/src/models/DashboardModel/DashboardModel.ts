@@ -9,6 +9,7 @@ import {
     DashboardTileTypes,
     DashboardUnversionedFields,
     DashboardVersionedFields,
+    LightdashUser,
     NotFoundError,
     SavedChart,
     SessionUser,
@@ -802,5 +803,77 @@ export class DashboardModel {
         return orphanedCharts.map((chart) => ({
             uuid: chart.saved_query_uuid,
         }));
+    }
+
+    async findInfoForDbtExposures(projectUuid: string): Promise<
+        Array<
+            Pick<Dashboard, 'uuid' | 'name' | 'description'> &
+                Pick<LightdashUser, 'firstName' | 'lastName'> & {
+                    chartUuids: string[] | null;
+                }
+        >
+    > {
+        return this.database
+            .table(DashboardsTableName)
+            .leftJoin(
+                DashboardVersionsTableName,
+                `${DashboardsTableName}.dashboard_id`,
+                `${DashboardVersionsTableName}.dashboard_id`,
+            )
+            .leftJoin(
+                DashboardTileChartTableName,
+                `${DashboardTileChartTableName}.dashboard_version_id`,
+                `${DashboardVersionsTableName}.dashboard_version_id`,
+            )
+            .leftJoin(
+                SavedChartsTableName,
+                `${DashboardTileChartTableName}.saved_chart_id`,
+                `${SavedChartsTableName}.saved_query_id`,
+            )
+            .leftJoin(
+                SpaceTableName,
+                `${DashboardsTableName}.space_id`,
+                `${SpaceTableName}.space_id`,
+            )
+            .leftJoin(
+                UserTableName,
+                `${UserTableName}.user_uuid`,
+                `${DashboardVersionsTableName}.updated_by_user_uuid`,
+            )
+            .innerJoin(
+                ProjectTableName,
+                `${SpaceTableName}.project_id`,
+                `${ProjectTableName}.project_id`,
+            )
+            .select({
+                uuid: `${DashboardsTableName}.dashboard_uuid`,
+                name: `${DashboardsTableName}.name`,
+                description: `${DashboardsTableName}.description`,
+                firstName: `${UserTableName}.first_name`,
+                lastName: `${UserTableName}.last_name`,
+                chartUuids: this.database.raw(
+                    'ARRAY_AGG(DISTINCT saved_queries.saved_query_uuid) FILTER (WHERE saved_queries.saved_query_uuid IS NOT NULL)',
+                ),
+            })
+            .orderBy([
+                {
+                    column: `${DashboardVersionsTableName}.dashboard_id`,
+                },
+                {
+                    column: `${DashboardVersionsTableName}.created_at`,
+                    order: 'desc',
+                },
+            ])
+            .groupBy(
+                `${DashboardsTableName}.dashboard_uuid`,
+                `${DashboardsTableName}.name`,
+                `${DashboardsTableName}.description`,
+                `${UserTableName}.first_name`,
+                `${UserTableName}.last_name`,
+                `${DashboardVersionsTableName}.dashboard_id`,
+                `${DashboardVersionsTableName}.created_at`,
+            )
+            .distinctOn(`${DashboardVersionsTableName}.dashboard_id`)
+            .where(`${ProjectTableName}.project_uuid`, projectUuid);
     }
 }

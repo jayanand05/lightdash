@@ -1,6 +1,5 @@
 import {
     ConditionalFormattingConfig,
-    Field,
     fieldId,
     formatItemValue,
     getConditionalFormattingColor,
@@ -8,13 +7,13 @@ import {
     getConditionalFormattingDescription,
     isField,
     isNumericItem,
+    ItemsMap,
     PivotData,
     ResultValue,
-    TableCalculation,
 } from '@lightdash/common';
 import { BoxProps } from '@mantine/core';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import last from 'lodash-es/last';
+import last from 'lodash/last';
 import { readableColor } from 'polished';
 import React, { FC, useCallback, useMemo, useRef } from 'react';
 import { isSummable } from '../../../hooks/useColumnTotals';
@@ -44,7 +43,7 @@ type PivotTableProps = BoxProps & // TODO: remove this
         conditionalFormattings: ConditionalFormattingConfig[];
         hideRowNumbers: boolean;
         getFieldLabel: (fieldId: string) => string | undefined;
-        getField: (fieldId: string) => Field | TableCalculation;
+        getField: (fieldId: string) => ItemsMap[string] | undefined;
     };
 
 const PivotTable: FC<PivotTableProps> = ({

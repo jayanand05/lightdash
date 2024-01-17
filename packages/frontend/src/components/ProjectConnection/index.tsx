@@ -1,4 +1,3 @@
-import { Callout, Intent } from '@blueprintjs/core';
 import { subject } from '@casl/ability';
 import {
     CreateWarehouseCredentials,
@@ -10,15 +9,18 @@ import {
     WarehouseTypes,
 } from '@lightdash/common';
 import {
+    Alert,
     Anchor,
     Avatar,
     Button,
     Card,
     Flex,
     Stack,
+    Text,
     TextInput,
     Title,
 } from '@mantine/core';
+import { IconExclamationCircle } from '@tabler/icons-react';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { FieldErrors, useForm, useFormContext } from 'react-hook-form';
 import { SubmitErrorHandler } from 'react-hook-form/dist/types/form';
@@ -34,16 +36,13 @@ import { useApp } from '../../providers/AppProvider';
 import { useTracking } from '../../providers/TrackingProvider';
 import { EventName } from '../../types/Events';
 import { useAbilityContext } from '../common/Authorization';
+import MantineIcon from '../common/MantineIcon';
 import { SettingsGridCard } from '../common/Settings/SettingsCard';
 import DocumentationHelpButton from '../DocumentationHelpButton';
 import DbtSettingsForm from './DbtSettingsForm';
 import DbtLogo from './ProjectConnectFlow/Assets/dbt.svg';
 import { getWarehouseIcon } from './ProjectConnectFlow/SelectWarehouse';
-import {
-    CompileProjectButton,
-    FormContainer,
-    LeftPanelMessage,
-} from './ProjectConnection.styles';
+import { FormContainer } from './ProjectConnection.styles';
 import { ProjectFormProvider } from './ProjectFormProvider';
 import ProjectStatusCallout from './ProjectStatusCallout';
 import WarehouseSettingsForm from './WarehouseSettingsForm';
@@ -108,10 +107,10 @@ const ProjectForm: FC<Props> = ({
                     </Flex>
 
                     {health.data?.staticIp && (
-                        <LeftPanelMessage>
+                        <Text color="gray">
                             If you need to add our IP address to your database's
                             allow-list, use <b>{health.data?.staticIp}</b>
-                        </LeftPanelMessage>
+                        </Text>
                     )}
                 </div>
 
@@ -241,11 +240,11 @@ export const UpdateProjectConnection: FC<{
 
     if (data?.type === ProjectType.PREVIEW) {
         return (
-            <Callout intent="warning">
-                <p>
-                    Developer previews are temporary Lightdash projects where
-                    settings cannot be changed.
-                </p>
+            <Alert
+                color="orange"
+                icon={<MantineIcon icon={IconExclamationCircle} size="lg" />}
+                title="Developer previews are temporary Lightdash projects where settings cannot be changed."
+            >
                 Read docs{' '}
                 <Anchor
                     href="https://docs.lightdash.com/guides/cli/how-to-use-lightdash-preview"
@@ -255,7 +254,7 @@ export const UpdateProjectConnection: FC<{
                     here
                 </Anchor>{' '}
                 to know more.
-            </Callout>
+            </Alert>
         );
     }
 
@@ -275,12 +274,7 @@ export const UpdateProjectConnection: FC<{
                 />
             </ProjectFormProvider>
 
-            {!isIdle && (
-                <ProjectStatusCallout
-                    style={{ marginBottom: '20px' }}
-                    mutation={updateMutation}
-                />
-            )}
+            {!isIdle && <ProjectStatusCallout mutation={updateMutation} />}
 
             <Card
                 component={Flex}
@@ -388,13 +382,13 @@ export const CreateProjectConnection: FC<CreateProjectConnectionProps> = ({
                     selectedWarehouse={selectedWarehouse}
                 />
 
-                <CompileProjectButton
-                    large
+                <Button
+                    sx={{ alignSelf: 'end' }}
                     type="submit"
-                    intent={Intent.PRIMARY}
-                    text="Test & compile project"
                     loading={isSavingProject}
-                />
+                >
+                    Test & compile project
+                </Button>
             </ProjectFormProvider>
         </FormContainer>
     );

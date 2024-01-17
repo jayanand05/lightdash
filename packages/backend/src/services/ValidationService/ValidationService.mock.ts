@@ -64,6 +64,7 @@ export const chart: SavedChart = {
         lastName: 'Attenborough',
     },
     metricQuery: {
+        exploreName: 'table',
         dimensions: ['table_dimension'],
         metrics: ['table_metric'],
         filters: {
@@ -154,6 +155,7 @@ export const chart: SavedChart = {
     spaceName: 'space name',
     pinnedListUuid: null,
     pinnedListOrder: null,
+    colorPalette: [],
 };
 
 export const chartWithJoinedField: SavedChart = {

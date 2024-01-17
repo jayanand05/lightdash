@@ -9,7 +9,7 @@ import {
     Text,
 } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
-import uniq from 'lodash-es/uniq';
+import uniq from 'lodash/uniq';
 import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import {
     MAX_AUTOCOMPLETE_RESULTS,
@@ -34,6 +34,8 @@ const FilterStringAutoComplete: FC<Props> = ({
     disabled,
     onChange,
     placeholder,
+    onDropdownOpen,
+    onDropdownClose,
     ...rest
 }) => {
     const { projectUuid, getAutocompleteFilterGroup } = useFiltersContext();
@@ -48,7 +50,7 @@ const FilterStringAutoComplete: FC<Props> = ({
         [field, filterId, getAutocompleteFilterGroup],
     );
 
-    const { isLoading, results: resultsSet } = useFieldValues(
+    const { isInitialLoading, results: resultsSet } = useFieldValues(
         search,
         initialSuggestionData,
         projectUuid,
@@ -183,8 +185,10 @@ const FilterStringAutoComplete: FC<Props> = ({
             onSearchChange={setSearch}
             limit={MAX_AUTOCOMPLETE_RESULTS}
             onPaste={handlePaste}
-            nothingFound={isLoading ? 'Loading...' : 'No results found'}
-            rightSection={isLoading ? <Loader size="xs" color="gray" /> : null}
+            nothingFound={isInitialLoading ? 'Loading...' : 'No results found'}
+            rightSection={
+                isInitialLoading ? <Loader size="xs" color="gray" /> : null
+            }
             dropdownComponent={DropdownComponentOverride}
             itemComponent={({ label, ...others }) =>
                 others.disabled ? (
@@ -199,7 +203,11 @@ const FilterStringAutoComplete: FC<Props> = ({
             }
             data={data}
             value={values}
-            onDropdownClose={handleResetSearch}
+            onDropdownOpen={onDropdownOpen}
+            onDropdownClose={() => {
+                handleResetSearch();
+                onDropdownClose?.();
+            }}
             onChange={handleChange}
             onCreate={handleAdd}
             onKeyDown={handleKeyDown}

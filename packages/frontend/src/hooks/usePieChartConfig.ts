@@ -1,14 +1,13 @@
 import {
     ApiQueryResults,
     CustomDimension,
-    ECHARTS_DEFAULT_COLORS,
-    Explore,
-    Field,
-    fieldId,
+    Dimension,
     formatItemValue,
-    getCustomDimensionId,
-    isCustomDimension,
     isField,
+    isMetric,
+    isTableCalculation,
+    ItemsMap,
+    Metric,
     PieChart,
     PieChartLegendPosition,
     PieChartLegendPositionDefault,
@@ -18,15 +17,14 @@ import {
     TableCalculation,
 } from '@lightdash/common';
 import { useDebouncedValue } from '@mantine/hooks';
-import isEmpty from 'lodash-es/isEmpty';
-import isEqual from 'lodash-es/isEqual';
-import mapValues from 'lodash-es/mapValues';
-import omitBy from 'lodash-es/omitBy';
-import pick from 'lodash-es/pick';
-import pickBy from 'lodash-es/pickBy';
+import isEmpty from 'lodash/isEmpty';
+import isEqual from 'lodash/isEqual';
+import mapValues from 'lodash/mapValues';
+import omitBy from 'lodash/omitBy';
+import pick from 'lodash/pick';
+import pickBy from 'lodash/pickBy';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isHexCodeColor } from '../utils/colorUtils';
-import { useOrganization } from './organization/useOrganization';
 
 type PieChartConfig = {
     validConfig: PieChart;
@@ -37,7 +35,7 @@ type PieChartConfig = {
     groupRemove: (dimensionId: string) => void;
 
     metricId: string | null;
-    selectedMetric: Field | TableCalculation | undefined;
+    selectedMetric: Metric | TableCalculation | undefined;
     metricChange: (metricId: string | null) => void;
 
     isDonut: boolean;
@@ -53,8 +51,6 @@ type PieChartConfig = {
     isValueLabelOverriden: boolean;
     isShowValueOverriden: boolean;
     isShowPercentageOverriden: boolean;
-
-    defaultColors: string[];
 
     sortedGroupLabels: string[];
     groupLabelOverrides: Record<string, string>;
@@ -85,25 +81,23 @@ type PieChartConfig = {
     }[];
 };
 
-type PieChartConfigFn = (
-    explore: Explore | undefined,
+export type PieChartConfigFn = (
     resultsData: ApiQueryResults | undefined,
     pieChartConfig: PieChart | undefined,
-    dimensions: Field[],
-    allNumericMetrics: (Field | TableCalculation)[],
-    customDimensions: CustomDimension[],
+    itemsMap: ItemsMap | undefined,
+    dimensions: Record<string, CustomDimension | Dimension>,
+    numericMetrics: Record<string, Metric | TableCalculation>,
+    colorPalette: string[],
 ) => PieChartConfig;
 
 const usePieChartConfig: PieChartConfigFn = (
-    explore,
     resultsData,
     pieChartConfig,
+    itemsMap,
     dimensions,
-    allNumericMetrics,
-    customDimensions,
+    numericMetrics,
+    colorPalette,
 ) => {
-    const { data: org } = useOrganization();
-
     const [groupFieldIds, setGroupFieldIds] = useState(
         pieChartConfig?.groupFieldIds ?? [],
     );
@@ -158,33 +152,24 @@ const usePieChartConfig: PieChartConfigFn = (
         pieChartConfig?.legendPosition ?? PieChartLegendPositionDefault,
     );
 
-    const defaultColors = useMemo(
-        () => org?.chartColors ?? ECHARTS_DEFAULT_COLORS,
-        [org],
-    );
-
-    const dimensionIds = useMemo(
-        () =>
-            [...dimensions, ...customDimensions].map((dimension) => {
-                if (isCustomDimension(dimension))
-                    return getCustomDimensionId(dimension);
-                return fieldId(dimension);
-            }),
-        [customDimensions, dimensions],
-    );
+    const dimensionIds = useMemo(() => Object.keys(dimensions), [dimensions]);
 
     const allNumericMetricIds = useMemo(
-        () => allNumericMetrics.map((m) => (isField(m) ? fieldId(m) : m.name)),
-        [allNumericMetrics],
+        () => Object.keys(numericMetrics),
+        [numericMetrics],
     );
 
     const selectedMetric = useMemo(() => {
-        return allNumericMetrics.find((m) =>
-            isField(m) ? fieldId(m) === metricId : m.name === metricId,
-        );
-    }, [allNumericMetrics, metricId]);
+        if (!itemsMap || !metricId) return undefined;
+        const item = itemsMap[metricId];
 
-    const isLoading = !explore || !resultsData;
+        if ((isField(item) && isMetric(item)) || isTableCalculation(item))
+            return item;
+
+        return undefined;
+    }, [itemsMap, metricId]);
+
+    const isLoading = !resultsData;
 
     useEffect(() => {
         if (isLoading) return;
@@ -303,10 +288,10 @@ const usePieChartConfig: PieChartConfigFn = (
         return Object.fromEntries(
             groupLabels.map((name, index) => [
                 name,
-                defaultColors[index % defaultColors.length],
+                colorPalette[index % colorPalette.length],
             ]),
         );
-    }, [groupLabels, defaultColors]);
+    }, [groupLabels, colorPalette]);
 
     const handleGroupChange = useCallback(
         (prevDimensionId: string, newDimensionId: string) => {
@@ -483,8 +468,6 @@ const usePieChartConfig: PieChartConfigFn = (
         isValueLabelOverriden,
         isShowValueOverriden,
         isShowPercentageOverriden,
-
-        defaultColors,
 
         sortedGroupLabels,
         groupLabelOverrides,

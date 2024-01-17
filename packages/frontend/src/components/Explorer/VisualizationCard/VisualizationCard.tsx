@@ -1,4 +1,8 @@
-import { getHiddenTableFields, NotFoundError } from '@lightdash/common';
+import {
+    ECHARTS_DEFAULT_COLORS,
+    getHiddenTableFields,
+    NotFoundError,
+} from '@lightdash/common';
 import { FC, memo, useCallback, useMemo, useState } from 'react';
 
 import { useDisclosure } from '@mantine/hooks';
@@ -6,6 +10,7 @@ import { downloadCsv } from '../../../api/csv';
 import useDashboardStorage from '../../../hooks/dashboard/useDashboardStorage';
 import { EChartSeries } from '../../../hooks/echarts/useEchartsCartesianConfig';
 import { uploadGsheet } from '../../../hooks/gdrive/useGdrive';
+import { useOrganization } from '../../../hooks/organization/useOrganization';
 import { useExplore } from '../../../hooks/useExplore';
 import { useApp } from '../../../providers/AppProvider';
 import {
@@ -31,6 +36,7 @@ const VisualizationCard: FC<{
     isProjectPreview?: boolean;
 }> = memo(({ projectUuid: fallBackUUid, isProjectPreview }) => {
     const { health } = useApp();
+    const { data: org } = useOrganization();
 
     const savedChart = useExplorerContext(
         (context) => context.state.savedChart,
@@ -148,7 +154,7 @@ const VisualizationCard: FC<{
         throw new NotFoundError('no metric query defined');
     };
 
-    if (health.isLoading || !health.data) {
+    if (health.isInitialLoading || !health.data) {
         return null;
     }
 
@@ -156,7 +162,6 @@ const VisualizationCard: FC<{
         <VisualizationProvider
             chartConfig={unsavedChartVersion.chartConfig}
             initialPivotDimensions={unsavedChartVersion.pivotConfig?.columns}
-            explore={explore}
             resultsData={queryResults}
             isLoading={isLoadingQueryResults}
             columnOrder={unsavedChartVersion.tableConfig.columnOrder}
@@ -166,6 +171,7 @@ const VisualizationCard: FC<{
             onChartConfigChange={setChartConfig}
             onChartTypeChange={setChartType}
             onPivotDimensionsChange={setPivotFields}
+            colorPalette={org?.chartColors ?? ECHARTS_DEFAULT_COLORS}
         >
             <CollapsableCard
                 title="Charts"

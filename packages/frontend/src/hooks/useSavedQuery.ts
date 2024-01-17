@@ -8,13 +8,14 @@ import {
     UpdateMultipleSavedChart,
     UpdateSavedChart,
 } from '@lightdash/common';
+import { IconArrowRight } from '@tabler/icons-react';
 import {
     useMutation,
     UseMutationOptions,
     useQuery,
     useQueryClient,
     UseQueryOptions,
-} from 'react-query';
+} from '@tanstack/react-query';
 import { useHistory, useParams } from 'react-router-dom';
 import { lightdashApi } from '../api';
 import { convertDateFilters } from '../utils/dateFilter';
@@ -50,7 +51,7 @@ const duplicateSavedQuery = async (
     });
 
 export const deleteSavedQuery = async (id: string) =>
-    lightdashApi<undefined>({
+    lightdashApi<null>({
         url: `/saved/${id}`,
         method: 'DELETE',
         body: undefined,
@@ -147,27 +148,30 @@ export const useChartVersion = (chartUuid: string, versionUuid?: string) =>
 const rollbackChartQuery = async (
     chartUuid: string,
     versionUuid: string,
-): Promise<undefined> =>
-    lightdashApi<undefined>({
+): Promise<null> =>
+    lightdashApi<null>({
         url: `/saved/${chartUuid}/rollback/${versionUuid}`,
         method: 'POST',
         body: undefined,
     });
 export const useChartVersionRollbackMutation = (
     chartUuid: string,
-    useQueryOptions?: UseQueryOptions<undefined, ApiError>,
+    useMutationOptions?: Omit<
+        UseMutationOptions<null, ApiError, string, unknown>,
+        'mutationFn'
+    >,
 ) => {
     const { showToastSuccess, showToastError } = useToaster();
-    return useMutation<undefined, ApiError, string>(
+    return useMutation<null, ApiError, string>(
         (versionUuid: string) => rollbackChartQuery(chartUuid, versionUuid),
         {
             mutationKey: ['saved_query_rollback'],
-            ...useQueryOptions,
-            onSuccess: async (data) => {
+            ...useMutationOptions,
+            onSuccess: async (...args) => {
                 showToastSuccess({
                     title: `Success! Chart was reverted.`,
                 });
-                useQueryOptions?.onSuccess?.(data);
+                useMutationOptions?.onSuccess?.(...args);
             },
             onError: (error) => {
                 showToastError({
@@ -182,27 +186,33 @@ export const useChartVersionRollbackMutation = (
 export const useSavedQueryDeleteMutation = () => {
     const queryClient = useQueryClient();
     const { showToastSuccess, showToastError } = useToaster();
-    return useMutation<undefined, ApiError, string>(deleteSavedQuery, {
-        mutationKey: ['saved_query_create'],
-        onSuccess: async () => {
-            await queryClient.invalidateQueries('spaces');
-            await queryClient.invalidateQueries('space');
-            await queryClient.invalidateQueries('pinned_items');
-            await queryClient.invalidateQueries(
-                'most-popular-and-recently-updated',
-            );
+    return useMutation<null, ApiError, string>(
+        async (data) => {
+            queryClient.removeQueries(['savedChartResults', data]);
+            return deleteSavedQuery(data);
+        },
+        {
+            mutationKey: ['saved_query_create'],
+            onSuccess: async () => {
+                await queryClient.invalidateQueries(['spaces']);
+                await queryClient.invalidateQueries(['space']);
+                await queryClient.invalidateQueries(['pinned_items']);
+                await queryClient.invalidateQueries([
+                    'most-popular-and-recently-updated',
+                ]);
 
-            showToastSuccess({
-                title: `Success! Chart was deleted.`,
-            });
+                showToastSuccess({
+                    title: `Success! Chart was deleted.`,
+                });
+            },
+            onError: (error) => {
+                showToastError({
+                    title: `Failed to delete chart`,
+                    subtitle: error.error.message,
+                });
+            },
         },
-        onError: (error) => {
-            showToastError({
-                title: `Failed to delete chart`,
-                subtitle: error.error.message,
-            });
-        },
-    });
+    );
 };
 
 const updateMultipleSavedQuery = async (
@@ -228,10 +238,10 @@ export const useUpdateMultipleMutation = (projectUuid: string) => {
             mutationKey: ['saved_query_multiple_update'],
             onSuccess: async (data) => {
                 await queryClient.invalidateQueries(['space', projectUuid]);
-                await queryClient.invalidateQueries('spaces');
-                await queryClient.invalidateQueries(
+                await queryClient.invalidateQueries(['spaces']);
+                await queryClient.invalidateQueries([
                     'most-popular-and-recently-updated',
-                );
+                ]);
                 data.forEach((savedChart) => {
                     queryClient.setQueryData(
                         ['saved_query', savedChart.uuid],
@@ -279,18 +289,18 @@ export const useUpdateMutation = (
                     data.projectUuid,
                 ]);
 
-                await queryClient.invalidateQueries(
+                await queryClient.invalidateQueries([
                     'most-popular-and-recently-updated',
-                );
+                ]);
 
-                await queryClient.invalidateQueries('spaces');
+                await queryClient.invalidateQueries(['spaces']);
                 queryClient.setQueryData(['saved_query', data.uuid], data);
                 showToastSuccess({
                     title: `Success! Chart was saved.`,
                     action: dashboardUuid
                         ? {
-                              text: 'Open dashboard',
-                              icon: 'arrow-right',
+                              children: 'Open dashboard',
+                              icon: IconArrowRight,
                               onClick: () =>
                                   history.push(
                                       `/projects/${data.projectUuid}/dashboards/${dashboardUuid}`,
@@ -329,18 +339,18 @@ export const useMoveChartMutation = (
         mutationKey: ['saved_query_move'],
         ...options,
         onSuccess: async (data, _, __) => {
-            await queryClient.invalidateQueries('spaces');
+            await queryClient.invalidateQueries(['spaces']);
             await queryClient.invalidateQueries(['space', projectUuid]);
-            await queryClient.invalidateQueries(
+            await queryClient.invalidateQueries([
                 'most-popular-and-recently-updated',
-            );
+            ]);
 
             queryClient.setQueryData(['saved_query', data.uuid], data);
             showToastSuccess({
                 title: `Chart has been moved to ${data.spaceName}`,
                 action: {
-                    text: 'Go to space',
-                    icon: 'arrow-right',
+                    children: 'Go to space',
+                    icon: IconArrowRight,
                     onClick: () =>
                         history.push(
                             `/projects/${projectUuid}/spaces/${data.spaceUuid}`,
@@ -402,11 +412,11 @@ export const useDuplicateChartMutation = (
         {
             mutationKey: ['saved_query_create', projectUuid],
             onSuccess: async (data) => {
-                await queryClient.invalidateQueries('spaces');
+                await queryClient.invalidateQueries(['spaces']);
                 await queryClient.invalidateQueries(['space', projectUuid]);
-                await queryClient.invalidateQueries(
+                await queryClient.invalidateQueries([
                     'most-popular-and-recently-updated',
-                );
+                ]);
 
                 if (!options?.showRedirectButton) {
                     history.push({
@@ -418,8 +428,8 @@ export const useDuplicateChartMutation = (
                     title: `Chart successfully duplicated!`,
                     action: options?.showRedirectButton
                         ? {
-                              text: 'Open chart',
-                              icon: 'arrow-right',
+                              children: 'Open chart',
+                              icon: IconArrowRight,
                               onClick: () =>
                                   history.push(
                                       `/projects/${projectUuid}/saved/${data.uuid}`,
@@ -451,10 +461,10 @@ export const useAddVersionMutation = () => {
     >(addVersionSavedQuery, {
         mutationKey: ['saved_query_version'],
         onSuccess: async (data) => {
-            await queryClient.invalidateQueries('spaces');
-            await queryClient.invalidateQueries(
+            await queryClient.invalidateQueries(['spaces']);
+            await queryClient.invalidateQueries([
                 'most-popular-and-recently-updated',
-            );
+            ]);
 
             queryClient.setQueryData(['saved_query', data.uuid], data);
             await queryClient.resetQueries(['savedChartResults', data.uuid]);
@@ -463,8 +473,8 @@ export const useAddVersionMutation = () => {
                 showToastSuccess({
                     title: `Success! Chart was updated.`,
                     action: {
-                        text: 'Open dashboard',
-                        icon: 'arrow-right',
+                        children: 'Open dashboard',
+                        icon: IconArrowRight,
                         onClick: () =>
                             history.push(
                                 `/projects/${data.projectUuid}/dashboards/${dashboardUuid}`,

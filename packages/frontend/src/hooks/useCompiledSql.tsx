@@ -3,7 +3,7 @@ import {
     ApiError,
     MetricQuery,
 } from '@lightdash/common';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { lightdashApi } from '../api';
 import { useExplorerContext } from '../providers/ExplorerProvider';
@@ -47,6 +47,7 @@ export const useCompiledSql = () => {
 
     const setErrorResponse = useQueryError();
     const metricQuery: MetricQuery = {
+        exploreName: tableId,
         dimensions: Array.from(dimensions),
         metrics: Array.from(metrics),
         sorts,

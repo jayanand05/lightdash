@@ -8,10 +8,9 @@ import {
 import { DbtCloudIntegration } from './types/dbtCloud';
 import { Explore, SummaryExplore } from './types/explore';
 import {
-    CompiledDimension,
     CompiledField,
-    CompiledMetric,
     CustomDimension,
+    Dimension,
     DimensionType,
     Field,
     FieldId,
@@ -19,6 +18,10 @@ import {
     FilterableField,
     friendlyName,
     isDimension,
+    isField,
+    isMetric,
+    isTableCalculation,
+    ItemsMap,
     Metric,
     TableCalculation,
 } from './types/field';
@@ -26,6 +29,7 @@ import {
     AdditionalMetric,
     getCustomDimensionId,
     isAdditionalMetric,
+    isCustomDimension,
     MetricQuery,
 } from './types/metricQuery';
 import {
@@ -52,6 +56,8 @@ import { ShareUrl } from './types/share';
 import { SlackSettings } from './types/slackSettings';
 
 import { Email } from './types/api/email';
+import { ApiSuccessEmpty } from './types/api/success';
+import { DbtExposure } from './types/dbt';
 import { EmailStatusExpiring } from './types/email';
 import { FieldValueSearchResult } from './types/fieldMatch';
 import { DashboardFilters } from './types/filter';
@@ -67,6 +73,7 @@ import {
     UpdateAllowedEmailDomains,
 } from './types/organization';
 import { PinnedItems } from './types/pinning';
+import { ProjectGroupAccess } from './types/projectGroupAccess';
 import {
     CreateWarehouseCredentials,
     DbtProjectConfig,
@@ -91,6 +98,7 @@ import { TableBase } from './types/table';
 import { LightdashUser, UserAllowedOrganization } from './types/user';
 import { ValidationResponse } from './types/validation';
 import { convertAdditionalMetric } from './utils/additionalMetrics';
+import { getFields } from './utils/fields';
 import { formatItemValue } from './utils/formatting';
 import { getItemId, getItemLabelWithoutTableName } from './utils/item';
 
@@ -131,6 +139,7 @@ export * from './types/organizationMemberProfile';
 export * from './types/personalAccessToken';
 export * from './types/pinning';
 export * from './types/pivot';
+export * from './types/projectGroupAccess';
 export * from './types/projectMemberProfile';
 export * from './types/projects';
 export * from './types/resourceViewItem';
@@ -154,6 +163,7 @@ export * from './utils/api';
 export { default as assertUnreachable } from './utils/assertUnreachable';
 export * from './utils/conditionalFormatting';
 export * from './utils/email';
+export * from './utils/fields';
 export * from './utils/filters';
 export * from './utils/formatting';
 export * from './utils/github';
@@ -163,15 +173,24 @@ export * from './utils/time';
 export * from './utils/timeFrames';
 
 export const validateEmail = (email: string): boolean => {
+    if (/\s/.test(email)) {
+        return false;
+    }
+
     const re =
         /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
     return re.test(String(email).toLowerCase());
 };
 
 export const getEmailSchema = () =>
-    z.string().refine((email) => validateEmail(email), {
-        message: 'must be a valid email',
-    });
+    z
+        .string()
+        .refine((email) => validateEmail(email), {
+            message: 'Email address is not valid',
+        })
+        .refine((email) => !/\s/.test(email), {
+            message: 'Email address must not contain whitespaces',
+        });
 
 export const getPasswordSchema = () =>
     z
@@ -295,19 +314,6 @@ export type ArgumentsOf<F extends Function> = F extends (
     ? A
     : never;
 
-// Helper function to get a list of all dimensions in an explore
-export const getDimensions = (explore: Explore): CompiledDimension[] =>
-    Object.values(explore.tables).flatMap((t) => Object.values(t.dimensions));
-
-// Helper function to get a list of all metrics in an explore
-export const getMetrics = (explore: Explore): CompiledMetric[] =>
-    Object.values(explore.tables).flatMap((t) => Object.values(t.metrics));
-
-export const getFields = (explore: Explore): CompiledField[] => [
-    ...getDimensions(explore),
-    ...getMetrics(explore),
-];
-
 export const getVisibleFields = (explore: Explore): CompiledField[] =>
     getFields(explore).filter(({ hidden }) => !hidden);
 
@@ -335,6 +341,7 @@ export type ApiQueryResults = {
     metricQuery: MetricQuery;
     cacheMetadata: CacheMetadata;
     rows: ResultRow[];
+    fields: ItemsMap;
 };
 
 export type ApiChartAndResults = {
@@ -344,6 +351,7 @@ export type ApiChartAndResults = {
     metricQuery: MetricQuery;
     cacheMetadata: CacheMetadata;
     rows: ResultRow[];
+    fields: ItemsMap;
 };
 
 export type ApiSqlQueryResults = {
@@ -526,13 +534,14 @@ type ApiResults =
     | FilterableField[]
     | DashboardAvailableFilters
     | ProjectSavedChartStatus
-    | undefined
+    | null
     | Array<unknown>
     | ApiJobStartedResults
     | ApiCreateUserTokenResults
     | CreatePersonalAccessToken
     | PersonalAccessToken
     | ProjectMemberProfile[]
+    | ProjectGroupAccess
     | SearchResults
     | Space
     | DbtCloudIntegration
@@ -559,7 +568,9 @@ type ApiResults =
     | ApiJobScheduledResponse['results']
     | ApiSshKeyPairResponse['results']
     | MostPopularAndRecentlyUpdated
-    | ApiCalculateTotalResponse['results'];
+    | ApiCalculateTotalResponse['results']
+    | Record<string, DbtExposure>
+    | ApiSuccessEmpty;
 
 export type ApiResponse = {
     status: 'ok';
@@ -708,9 +719,7 @@ export const getResultValueArray = (
         }, {}),
     );
 
-export const getDateGroupLabel = (
-    axisItem: Field | TableCalculation | CustomDimension,
-) => {
+export const getDateGroupLabel = (axisItem: ItemsMap[string]) => {
     if (
         isDimension(axisItem) &&
         [DimensionType.DATE, DimensionType.TIMESTAMP].includes(axisItem.type) &&
@@ -728,7 +737,7 @@ export const getAxisName = ({
     axisIndex,
     axisName,
     series,
-    items,
+    itemsMap,
 }: {
     isAxisTheSameForAllSeries: boolean;
     selectedAxisIndex: number;
@@ -736,12 +745,11 @@ export const getAxisName = ({
     axisIndex: number;
     axisName?: string;
     series?: Series[];
-    items: Array<Field | TableCalculation | CustomDimension>;
+    itemsMap: ItemsMap | undefined;
 }): string | undefined => {
-    const defaultItem = items.find(
-        (item) =>
-            getItemId(item) === (series || [])[0]?.encode[axisReference].field,
-    );
+    const defaultItem = itemsMap
+        ? itemsMap[(series || [])[0]?.encode[axisReference].field]
+        : undefined;
     const dateGroupName = defaultItem
         ? getDateGroupLabel(defaultItem)
         : undefined;
@@ -774,7 +782,7 @@ export function getItemMap(
     additionalMetrics: AdditionalMetric[] = [],
     tableCalculations: TableCalculation[] = [],
     customDimensions: CustomDimension[] = [],
-): Record<string, Field | TableCalculation> {
+): ItemsMap {
     const convertedAdditionalMetrics = (additionalMetrics || []).reduce<
         Metric[]
     >((acc, additionalMetric) => {
@@ -802,6 +810,30 @@ export function getItemMap(
     );
 }
 
+export const getDimensionsFromItemsMap = (itemsMap: ItemsMap) =>
+    Object.entries(itemsMap).reduce<
+        Record<string, Dimension | CustomDimension>
+    >((acc, [key, value]) => {
+        if (isDimension(value) || isCustomDimension(value)) {
+            return { ...acc, [key]: value };
+        }
+        return acc;
+    }, {});
+
+export const getMetricsFromItemsMap = (
+    itemsMap: ItemsMap,
+    filter: (value: ItemsMap[string]) => boolean = () => true,
+) =>
+    Object.entries(itemsMap).reduce<Record<string, Metric>>(
+        (acc, [key, value]) => {
+            if (isField(value) && isMetric(value) && filter(value)) {
+                return { ...acc, [key]: value };
+            }
+            return acc;
+        },
+        {},
+    );
+
 export function itemsInMetricQuery(
     metricQuery: MetricQuery | undefined,
 ): string[] {
@@ -817,13 +849,13 @@ export function itemsInMetricQuery(
 
 export function formatRows(
     rows: { [col: string]: any }[],
-    itemMap: Record<string, Field | TableCalculation>,
+    itemsMap: ItemsMap,
 ): ResultRow[] {
     return rows.map((row) =>
         Object.keys(row).reduce<ResultRow>((acc, columnName) => {
             const col = row[columnName];
 
-            const item = itemMap[columnName];
+            const item = itemsMap[columnName];
             return {
                 ...acc,
                 [columnName]: {

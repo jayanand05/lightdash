@@ -1,4 +1,5 @@
 import { subject } from '@casl/ability';
+import { ECHARTS_DEFAULT_COLORS } from '@lightdash/common';
 import {
     Badge,
     Button,
@@ -32,6 +33,7 @@ import useMetricFlowVisualization from '../features/metricFlow/hooks/useMetricFl
 import convertFieldMapToTableColumns from '../features/metricFlow/utils/convertFieldMapToTableColumns';
 import convertMetricFlowFieldsToExplore from '../features/metricFlow/utils/convertMetricFlowFieldsToExplore';
 import convertMetricFlowQueryResultsToResultsData from '../features/metricFlow/utils/convertMetricFlowQueryResultsToResultsData';
+import { useOrganization } from '../hooks/organization/useOrganization';
 import useToaster from '../hooks/toaster/useToaster';
 import { useActiveProjectUuid } from '../hooks/useActiveProject';
 import { useApp } from '../providers/AppProvider';
@@ -41,6 +43,7 @@ const MOCK_TABLE_NAME = 'metricflow';
 const MetricFlowPage = () => {
     const { showToastError } = useToaster();
     const { user, health } = useApp();
+    const { data: org } = useOrganization();
     const { activeProjectUuid } = useActiveProjectUuid();
     const [selectedMetrics, setSelectedMetrics] = useState<Record<string, {}>>(
         {},
@@ -110,8 +113,8 @@ const MetricFlowPage = () => {
             metricFlowQueryResultsQuery.data.query.jsonResult,
         );
         return {
-            resultsData: results.resultsData,
-            columns: convertFieldMapToTableColumns(results.fieldsMap),
+            resultsData: results,
+            columns: convertFieldMapToTableColumns(results.fields),
         };
     }, [explore, metricFlowQueryResultsQuery.data]);
 
@@ -170,9 +173,9 @@ const MetricFlowPage = () => {
     );
 
     if (
-        user.isLoading ||
+        user.isInitialLoading ||
         !activeProjectUuid ||
-        health.isLoading ||
+        health.isInitialLoading ||
         !health.data
     ) {
         return <LoadingState title="Loading metricflow" />;
@@ -328,11 +331,11 @@ const MetricFlowPage = () => {
                     onChartTypeChange={setChartType}
                     onPivotDimensionsChange={setPivotFields}
                     columnOrder={columnOrder}
-                    explore={explore}
                     isSqlRunner={true}
                     pivotTableMaxColumnLimit={
                         health.data.pivotTable.maxColumnLimit
                     }
+                    colorPalette={org?.chartColors ?? ECHARTS_DEFAULT_COLORS}
                 >
                     <CollapsableCard
                         title="Charts"

@@ -7,7 +7,7 @@ import {
 
 const apiPrefix = '/api/v1';
 
-const headers = {
+const defaultHeaders = {
     'Content-Type': 'application/json',
     [LightdashRequestMethodHeader]: RequestMethod.WEB_APP,
 };
@@ -29,13 +29,19 @@ type LightdashApiProps = {
     method: 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'PUT';
     url: string;
     body: BodyInit | null | undefined;
+    headers?: Record<string, string> | undefined;
 };
 export const lightdashApi = async <T extends ApiResponse['results']>({
     method,
     url,
     body,
+    headers,
 }: LightdashApiProps): Promise<T> =>
-    fetch(`${apiPrefix}${url}`, { method, headers, body })
+    fetch(`${apiPrefix}${url}`, {
+        method,
+        headers: { ...defaultHeaders, ...headers },
+        body,
+    })
         .then((r) => {
             if (!r.ok)
                 return r.json().then((d) => {
@@ -47,7 +53,9 @@ export const lightdashApi = async <T extends ApiResponse['results']>({
         .then((d: ApiResponse | ApiError) => {
             switch (d.status) {
                 case 'ok':
-                    return d.results as T;
+                    // make sure we return null instead of undefined
+                    // otherwise react-query will crash
+                    return (d.results ?? null) as T;
                 case 'error':
                     // eslint-disable-next-line @typescript-eslint/no-throw-literal
                     throw d;

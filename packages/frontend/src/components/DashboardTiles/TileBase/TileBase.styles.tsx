@@ -1,5 +1,4 @@
-import { Colors } from '@blueprintjs/core';
-import styled, { createGlobalStyle, css } from 'styled-components';
+import styled, { css } from 'styled-components';
 
 interface HeaderContainerProps {
     $isEditMode: boolean;
@@ -7,29 +6,14 @@ interface HeaderContainerProps {
     $isEmpty?: boolean;
 }
 
-export const TileBaseWrapper = styled.div<HeaderContainerProps>`
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    padding: 16px;
-    background: ${Colors.WHITE};
-    border-radius: 2px;
-    box-sizing: border-box;
-    border: 1px solid transparent;
-
-    ${(props) =>
-        props.$isEditMode
-            ? `border: 1px dashed #7ea5ff;`
-            : `box-shadow: 0 0 0 1px #bec1c426;`}
-`;
-
 export const TILE_HEADER_HEIGHT = 24;
 const TILE_HEADER_MARGIN_BOTTOM = 12;
 
 export const HeaderContainer = styled.div<HeaderContainerProps>`
     display: flex;
     flex-direction: row;
-    align-items: flex-start;
+    justify-content: space-between;
+    align-items: center;
     gap: 8px;
     height: ${TILE_HEADER_HEIGHT}px;
     margin-bottom: ${TILE_HEADER_MARGIN_BOTTOM}px;
@@ -55,16 +39,12 @@ export const HeaderContainer = styled.div<HeaderContainerProps>`
             : ''}
 `;
 
-export const GlobalTileStyles = createGlobalStyle`
-  .react-draggable.react-draggable-dragging ${TileBaseWrapper} {
-    box-shadow: 0 0 0 1px ${Colors.BLUE4};
-  }
-`;
-
 interface TileTitleProps {
     $hovered?: boolean;
 }
 
+// FIXME: colors in this file are hardcoded to mantine values.
+// #FFF is white, #212529 is gray.9
 export const TitleWrapper = styled.div<TileTitleProps>`
     flex-grow: 1;
     overflow: hidden;
@@ -81,8 +61,8 @@ export const TitleWrapper = styled.div<TileTitleProps>`
                       z-index: 10;
 
                       a {
-                          outline: 8px solid ${Colors.WHITE};
-                          background-color: ${Colors.WHITE};
+                          outline: 8px solid #fff;
+                          background-color: #fff;
                       }
                   `
                 : ''}
@@ -93,11 +73,11 @@ export const TitleWrapper = styled.div<TileTitleProps>`
 export const TileTitleLink = styled.a<TileTitleProps>`
     font-weight: 600;
     font-size: 16px;
-    color: ${Colors.DARK_GRAY1};
+    color: #212529;
     text-decoration: none;
 
     :hover {
-        color: ${Colors.DARK_GRAY1} !important;
+        color: #212529 !important;
         text-decoration: underline;
     }
 
@@ -135,17 +115,4 @@ export const ChartContainer = styled.div`
     flex: 1;
     overflow: hidden;
     display: flex;
-`;
-
-export const FilterWrapper = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-`;
-
-export const FilterLabel = styled.p`
-    margin-bottom: 5px;
-    color: ${Colors.GRAY5};
-    font-size: 12px;
-    font-weight: 500;
 `;

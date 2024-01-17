@@ -9,11 +9,7 @@ import {
     LineageGraph,
     SupportedDbtAdapter,
 } from '../types/dbt';
-import {
-    MissingCatalogEntryError,
-    NonCompiledModelError,
-    ParseError,
-} from '../types/errors';
+import { MissingCatalogEntryError, ParseError } from '../types/errors';
 import { Explore, ExploreError, Table } from '../types/explore';
 import {
     defaultSql,
@@ -87,6 +83,7 @@ const convertDimension = (
     source?: Source,
     timeInterval?: TimeFrames,
     startOfWeek?: WeekDay | null,
+    isAdditionalDimension?: boolean,
 ): Dimension => {
     let type =
         column.meta.dimension?.type || column.data_type || DimensionType.STRING;
@@ -144,6 +141,7 @@ const convertDimension = (
         ...(column.meta.dimension?.urls
             ? { urls: column.meta.dimension.urls }
             : {}),
+        ...(isAdditionalDimension ? { isAdditionalDimension } : {}),
     };
 };
 
@@ -251,9 +249,6 @@ export const convertTable = (
     dbtMetrics: DbtMetric[],
     startOfWeek?: WeekDay | null,
 ): Omit<Table, 'lineageGraph'> => {
-    if (!model.compiled) {
-        throw new NonCompiledModelError(`Model has not been compiled by dbt`);
-    }
     const meta = model.config?.meta || model.meta; // Config block takes priority, then meta block
     const tableLabel = meta.label || friendlyName(model.name);
     const [dimensions, metrics]: [
@@ -298,20 +293,47 @@ export const convertTable = (
                 extraDimensions = intervals.reduce(
                     (acc, interval) => ({
                         ...acc,
-                        [`${column.name}_${interval}`]: convertDimension(
-                            index,
-                            adapterType,
-                            model,
-                            tableLabel,
-                            column,
-                            undefined,
-                            interval,
-                            startOfWeek,
-                        ),
+                        [`${column.name}_${interval.toLowerCase()}`]:
+                            convertDimension(
+                                index,
+                                adapterType,
+                                model,
+                                tableLabel,
+                                column,
+                                undefined,
+                                interval,
+                                startOfWeek,
+                            ),
                     }),
                     {},
                 );
             }
+
+            extraDimensions = Object.entries(
+                column.meta.additional_dimensions || {},
+            ).reduce(
+                (acc, [subDimensionName, subDimension]) => ({
+                    ...acc,
+                    [subDimensionName]: convertDimension(
+                        index,
+                        adapterType,
+                        model,
+                        tableLabel,
+                        {
+                            ...column,
+                            name: subDimensionName,
+                            meta: {
+                                dimension: subDimension,
+                            },
+                        },
+                        undefined,
+                        undefined,
+                        startOfWeek,
+                        true,
+                    ),
+                }),
+                extraDimensions,
+            );
 
             const columnMetrics = Object.fromEntries(
                 Object.entries(column.meta.metrics || {}).map(
@@ -514,6 +536,7 @@ export const convertExplores = async (
     const validModels = models.filter(
         (model) => tableLookup[model.name] !== undefined,
     );
+
     const exploreCompiler = new ExploreCompiler(warehouseClient);
     const explores: (Explore | ExploreError)[] = validModels.map((model) => {
         const meta = model.config?.meta || model.meta; // Config block takes priority, then meta block
@@ -535,6 +558,7 @@ export const convertExplores = async (
                 })),
                 tables: tableLookup,
                 targetDatabase: adapterType,
+                warehouse: model.config?.snowflake_warehouse,
             });
         } catch (e) {
             return {

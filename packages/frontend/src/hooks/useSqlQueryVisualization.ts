@@ -97,6 +97,7 @@ const useSqlQueryVisualization = ({
             data?.rows
                 ? {
                       metricQuery: {
+                          exploreName: SQL_RESULTS_TABLE_NAME,
                           dimensions: dimensionKeys,
                           metrics: metricKeys,
                           filters: {},
@@ -121,9 +122,13 @@ const useSqlQueryVisualization = ({
                               };
                           }, {}),
                       ),
+                      fields: {
+                          ...fields.sqlQueryDimensions,
+                          ...fields.sqlQueryMetrics,
+                      },
                   }
                 : undefined,
-        [data, dimensionKeys, metricKeys],
+        [data, dimensionKeys, metricKeys, fields],
     );
     const explore: Explore = useMemo(
         () => ({
@@ -194,7 +199,6 @@ const useSqlQueryVisualization = ({
 
     return {
         initialPivotDimensions: initialState?.pivotConfig?.columns,
-        explore,
         fieldsMap: { ...fields.sqlQueryDimensions, ...fields.sqlQueryMetrics },
         resultsData,
         columnOrder: [...dimensionKeys, ...metricKeys],

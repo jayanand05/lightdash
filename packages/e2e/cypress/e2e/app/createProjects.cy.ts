@@ -64,7 +64,7 @@ const configurePostgresWarehouse = (
     });
     cy.get('input[name="warehouse.dbname"]').type(config.database);
 
-    cy.contains('a', 'Advanced configuration options').click();
+    cy.contains('button', 'Advanced configuration options').click();
 
     cy.get('input[name="warehouse.port"]').clear().type(config.port);
     cy.selectMantine('warehouse.sslmode', 'disable');
@@ -158,10 +158,7 @@ const testCompile = (): Cypress.Chainable<string> => {
 
     cy.contains('selected 12 models');
     // Configure
-    cy.findByText('Save changes')
-        .parent('button')
-        .should('not.be.disabled')
-        .click();
+    cy.contains('button', 'Save changes').click();
     cy.url().should('include', '/home', { timeout: 30000 });
     cy.contains('Welcome, David');
     cy.findByText('Charts and Dashboards');
@@ -180,6 +177,7 @@ const testFilterStringEscaping = (projectUuid: string) => {
         headers: { 'Content-type': 'application/json' },
         method: 'POST',
         body: {
+            exploreName: 'customers',
             dimensions: ['customers_first_name'],
             metrics: [],
             filters: {
@@ -241,6 +239,7 @@ const testPercentile = (
         headers: { 'Content-type': 'application/json' },
         method: 'POST',
         body: {
+            exploreName: 'events',
             dimensions: ['events_timestamp_tz_day'],
             metrics: [
                 'events_median',
@@ -275,6 +274,7 @@ const testTimeIntervalsResults = (
         headers: { 'Content-type': 'application/json' },
         method: 'POST',
         body: {
+            exploreName: 'events',
             dimensions: [
                 'events_timestamp_tz_raw',
                 'events_timestamp_tz_millisecond',
@@ -331,6 +331,7 @@ const createCustomDimensionChart = (projectUuid) => {
             description: 'Payment range by amount',
             tableName: 'payments',
             metricQuery: {
+                exploreName: 'payments',
                 dimensions: ['payments_payment_method'],
                 metrics: ['orders_total_order_amount'],
                 filters: {},
@@ -396,8 +397,8 @@ const testCustomDimensions = (projectUuid) => {
     // This is also used in createProject.cy.ts to test custom dimensions against all warehouses
     cy.visit(`/projects/${projectUuid}/saved`);
     cy.contains('How do payment methods vary').click();
-    cy.contains('0-6');
-    cy.contains('6-12');
+    cy.contains('0 - 6');
+    cy.contains('6 - 12');
 };
 
 describe('Create projects', () => {

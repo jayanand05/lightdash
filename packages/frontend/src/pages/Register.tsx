@@ -4,9 +4,17 @@ import {
     LightdashUser,
     OpenIdIdentityIssuerType,
 } from '@lightdash/common';
-import { Anchor, Card, Image, Stack, Text, Title } from '@mantine/core';
-import { FC } from 'react';
-import { useMutation } from 'react-query';
+import {
+    Anchor,
+    Card,
+    Divider,
+    Image,
+    Stack,
+    Text,
+    Title,
+} from '@mantine/core';
+import { useMutation } from '@tanstack/react-query';
+import { FC, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { lightdashApi } from '../api';
 import Page from '../components/common/Page/Page';
@@ -14,10 +22,10 @@ import { ThirdPartySignInButton } from '../components/common/ThirdPartySignInBut
 import PageSpinner from '../components/PageSpinner';
 import CreateUserForm from '../components/RegisterForms/CreateUserForm';
 import useToaster from '../hooks/toaster/useToaster';
+import { useFlashMessages } from '../hooks/useFlashMessages';
 import { useApp } from '../providers/AppProvider';
 import { useTracking } from '../providers/TrackingProvider';
 import LightdashLogo from '../svgs/lightdash-black.svg';
-import { Divider, DividerWrapper } from './Invite.styles';
 
 const registerQuery = async (data: CreateUserArgs) =>
     lightdashApi<LightdashUser>({
@@ -30,6 +38,16 @@ const Register: FC = () => {
     const location = useLocation<{ from?: Location } | undefined>();
     const { health } = useApp();
     const { showToastError } = useToaster();
+    const flashMessages = useFlashMessages();
+
+    useEffect(() => {
+        if (flashMessages.data?.error) {
+            showToastError({
+                title: 'Failed to authenticate',
+                subtitle: flashMessages.data.error.join('\n'),
+            });
+        }
+    }, [flashMessages.data, showToastError]);
     const allowPasswordAuthentication =
         !health.data?.auth.disablePasswordAuthentication;
     const { identify } = useTracking();
@@ -54,7 +72,7 @@ const Register: FC = () => {
         },
     });
 
-    if (health.isLoading) {
+    if (health.isInitialLoading) {
         return <PageSpinner />;
     }
 
@@ -87,11 +105,15 @@ const Register: FC = () => {
         <>
             {ssoLogins}
             {ssoLogins && passwordLogin && (
-                <DividerWrapper>
-                    <Divider />
-                    <b>OR</b>
-                    <Divider />
-                </DividerWrapper>
+                <Divider
+                    my="md"
+                    labelPosition="center"
+                    label={
+                        <Text color="gray.5" size="sm" fw={500}>
+                            OR
+                        </Text>
+                    }
+                />
             )}
             {passwordLogin}
         </>

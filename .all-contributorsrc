@@ -1256,6 +1256,54 @@
         "ideas",
         "code"
       ]
+    },
+    {
+      "login": "Shifan-Gu",
+      "name": "Shifan Gu",
+      "avatar_url": "https://avatars.githubusercontent.com/u/101873365?v=4",
+      "profile": "https://github.com/Shifan-Gu",
+      "contributions": [
+        "bug",
+        "code"
+      ]
+    },
+    {
+      "login": "dansreis",
+      "name": "Daniel Reis",
+      "avatar_url": "https://avatars.githubusercontent.com/u/9052608?v=4",
+      "profile": "https://github.com/dansreis",
+      "contributions": [
+        "code",
+        "bug"
+      ]
+    },
+    {
+      "login": "jogeshwar01",
+      "name": "Jogeshwar Singh",
+      "avatar_url": "https://avatars.githubusercontent.com/u/85165953?v=4",
+      "profile": "https://github.com/jogeshwar01",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "lancerael",
+      "name": "lancerael",
+      "avatar_url": "https://avatars.githubusercontent.com/u/11949472?v=4",
+      "profile": "https://github.com/lancerael",
+      "contributions": [
+        "code",
+        "bug"
+      ]
+    },
+    {
+      "login": "UlisesGascon",
+      "name": "Ulises Gascón",
+      "avatar_url": "https://avatars.githubusercontent.com/u/5110813?v=4",
+      "profile": "https://ulisesgascon.com/",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

@@ -1,5 +1,5 @@
 import styled, { css } from 'styled-components';
-import { ReactComponent as Logo } from '../../svgs/grey-icon-logo.svg';
+import Logo from '../../svgs/grey-icon-logo.svg?react';
 
 const centerItem = css`
     position: absolute;
@@ -10,6 +10,13 @@ const centerItem = css`
 
 export const SpinnerWrapper = styled.div`
     ${centerItem}
+
+    width: 100px;
+    height: 100px;
+
+    & > svg > g > g {
+        stroke-width: 2;
+    }
 `;
 
 export const LogoContainer = styled(Logo)`

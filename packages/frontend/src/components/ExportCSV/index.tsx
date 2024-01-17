@@ -1,24 +1,16 @@
-import {
-    Button,
-    ButtonProps,
-    DialogBody,
-    DialogFooter,
-    FormGroup,
-    Intent,
-    NumericInput,
-    Radio,
-    RadioGroup,
-    Spinner,
-} from '@blueprintjs/core';
-import { Classes } from '@blueprintjs/popover2';
+import { subject } from '@casl/ability';
 import { ApiScheduledDownloadCsv, ResultRow } from '@lightdash/common';
-import { FC, Fragment, memo, useState } from 'react';
-import { useMutation } from 'react-query';
+import { Alert, Box, Button, NumberInput, Radio, Stack } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { IconTableExport } from '@tabler/icons-react';
+import { useMutation } from '@tanstack/react-query';
+import { FC, memo, useState } from 'react';
 import { pollCsvFileUrl } from '../../api/csv';
 import useHealth from '../../hooks/health/useHealth';
 import useToaster from '../../hooks/toaster/useToaster';
-import { AppToaster } from '../AppToaster';
-import { InputWrapper, LimitWarning, Title } from './ExportCSV.styles';
+import useUser from '../../hooks/user/useUser';
+import { Can } from '../common/Authorization';
+import MantineIcon from '../common/MantineIcon';
 
 enum Limit {
     TABLE = 'table',
@@ -31,18 +23,13 @@ enum Values {
     RAW = 'raw',
 }
 
-const ExportAsCSVButton: FC<ButtonProps> = ({ ...props }) => {
-    return (
-        <Button text="Export CSV" rightIcon="caret-down" minimal {...props} />
-    );
-};
-
 type ExportCsvRenderProps = {
     onExport: () => Promise<unknown>;
     isExporting: boolean;
 };
 
 export type ExportCSVProps = {
+    projectUuid: string;
     rows: ResultRow[] | undefined;
     getCsvLink: (
         limit: number | null,
@@ -53,9 +40,11 @@ export type ExportCSVProps = {
 };
 
 const ExportCSV: FC<ExportCSVProps> = memo(
-    ({ rows, getCsvLink, isDialogBody, renderDialogActions }) => {
-        const { showToastError, showToast, showToastWarning } = useToaster();
+    ({ projectUuid, rows, getCsvLink, isDialogBody, renderDialogActions }) => {
+        const { showToastError, showToastInfo, showToastWarning } =
+            useToaster();
 
+        const user = useUser(true);
         const [limit, setLimit] = useState<string>(Limit.TABLE);
         const [customLimit, setCustomLimit] = useState<number>(1);
         const [format, setFormat] = useState<string>(Values.FORMATTED);
@@ -75,17 +64,12 @@ const ExportCSV: FC<ExportCSVProps> = memo(
                     ),
                 {
                     onMutate: () => {
-                        showToast({
+                        showToastInfo({
                             title: 'Exporting CSV',
                             subtitle: 'This may take a few minutes...',
-                            icon: (
-                                <Spinner
-                                    className="bp4-icon bp4-icon-error"
-                                    size={16}
-                                />
-                            ),
+                            loading: true,
                             key: 'exporting-csv',
-                            timeout: 0,
+                            autoClose: false,
                         });
                     },
                     onSuccess: (scheduledCsvResponse) => {
@@ -93,7 +77,7 @@ const ExportCSV: FC<ExportCSVProps> = memo(
                             .then((csvFile) => {
                                 if (csvFile.url)
                                     window.location.href = csvFile.url;
-                                AppToaster.dismiss('exporting-csv');
+                                notifications.hide('exporting-csv');
 
                                 if (csvFile.truncated) {
                                     showToastWarning({
@@ -103,7 +87,7 @@ const ExportCSV: FC<ExportCSVProps> = memo(
                                 }
                             })
                             .catch((error) => {
-                                AppToaster.dismiss('exporting-csv');
+                                notifications.hide('exporting-csv');
 
                                 showToastError({
                                     title: `Unable to download CSV`,
@@ -112,7 +96,7 @@ const ExportCSV: FC<ExportCSVProps> = memo(
                             });
                     },
                     onError: (error: { error: Error }) => {
-                        AppToaster.dismiss('exporting-csv');
+                        notifications.hide('exporting-csv');
 
                         showToastError({
                             title: `Unable to download CSV`,
@@ -123,85 +107,96 @@ const ExportCSV: FC<ExportCSVProps> = memo(
             );
 
         if (!rows || rows.length <= 0) {
-            return <ExportAsCSVButton disabled />;
+            return <Alert color="gray">No data to export</Alert>;
         }
 
-        const Wrapper = isDialogBody ? DialogBody : Fragment;
-
         return (
-            <>
-                <Wrapper>
-                    <FormGroup>
-                        <RadioGroup
-                            label={<Title>Values</Title>}
-                            onChange={(e) => setFormat(e.currentTarget.value)}
-                            selectedValue={format}
-                        >
+            <Box>
+                <Stack
+                    spacing="xs"
+                    m={isDialogBody ? 'md' : undefined}
+                    miw={300}
+                >
+                    <Radio.Group
+                        label="Values"
+                        value={format}
+                        onChange={(val) => setFormat(val)}
+                    >
+                        <Stack spacing="xs" mt="xs">
                             <Radio label="Formatted" value={Values.FORMATTED} />
                             <Radio label="Raw" value={Values.RAW} />
-                        </RadioGroup>
-                    </FormGroup>
+                        </Stack>
+                    </Radio.Group>
 
-                    <FormGroup>
-                        <RadioGroup
-                            label={<Title>Limit</Title>}
-                            onChange={(e) => setLimit(e.currentTarget.value)}
-                            selectedValue={limit}
+                    <Can
+                        I="manage"
+                        this={subject('ChangeCsvResults', {
+                            organizationUuid: user.data?.organizationUuid,
+                            projectUuid: projectUuid,
+                        })}
+                    >
+                        <Radio.Group
+                            label="Limit"
+                            value={limit}
+                            onChange={(val) => setLimit(val)}
                         >
-                            <Radio
-                                label="Results in Table"
-                                value={Limit.TABLE}
-                            />
-                            <Radio label="All Results" value={Limit.ALL} />
-                            <Radio label="Custom..." value={Limit.CUSTOM} />
-                        </RadioGroup>
-                    </FormGroup>
+                            <Stack spacing="xs" mt="xs">
+                                <Radio
+                                    label="Results in Table"
+                                    value={Limit.TABLE}
+                                />
+                                <Radio label="All Results" value={Limit.ALL} />
+                                <Radio label="Custom..." value={Limit.CUSTOM} />
+                            </Stack>
+                        </Radio.Group>
+                    </Can>
 
                     {limit === Limit.CUSTOM && (
-                        <InputWrapper>
-                            <NumericInput
-                                value={customLimit}
-                                min={1}
-                                fill
-                                onValueChange={(value: any) =>
-                                    setCustomLimit(value)
-                                }
-                            />
-                        </InputWrapper>
+                        <NumberInput
+                            w="7xl"
+                            size="xs"
+                            min={1}
+                            precision={0}
+                            required
+                            value={customLimit}
+                            onChange={(value) => setCustomLimit(Number(value))}
+                        />
                     )}
 
                     {(limit === Limit.ALL || limit === Limit.CUSTOM) && (
-                        <LimitWarning>
+                        <Alert color="gray">
                             Results are limited to{' '}
                             {Number(
                                 health.data?.query.csvCellsLimit || 100000,
                             ).toLocaleString()}{' '}
                             cells for each file
-                        </LimitWarning>
+                        </Alert>
                     )}
-                </Wrapper>
+                    {!isDialogBody && (
+                        <Button
+                            loading={isExporting}
+                            compact
+                            sx={{
+                                alignSelf: 'end',
+                            }}
+                            leftIcon={<MantineIcon icon={IconTableExport} />}
+                            onClick={() => exportCsvMutation()}
+                            data-testid="chart-export-csv-button"
+                        >
+                            Export CSV
+                        </Button>
+                    )}
+                </Stack>
 
-                {isDialogBody && renderDialogActions ? (
-                    <DialogFooter
-                        actions={renderDialogActions({
+                {isDialogBody && renderDialogActions && (
+                    <>
+                        {renderDialogActions({
                             onExport: exportCsvMutation,
                             isExporting,
                         })}
-                    />
-                ) : (
-                    <Button
-                        className={Classes.POPOVER2_DISMISS}
-                        loading={isExporting}
-                        fill
-                        intent={Intent.PRIMARY}
-                        icon="export"
-                        onClick={() => exportCsvMutation()}
-                        data-testid="chart-export-csv-button"
-                    >
-                        Export CSV
-                    </Button>
+                    </>
                 )}
-            </>
+            </Box>
         );
     },
 );

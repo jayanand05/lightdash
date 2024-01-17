@@ -1,8 +1,7 @@
 import {
-    Field,
     getItemLabel,
     getItemLabelWithoutTableName,
-    TableCalculation,
+    ItemsMap,
 } from '@lightdash/common';
 import { google, sheets_v4 } from 'googleapis';
 import { lightdashConfig } from '../../config/lightdashConfig';
@@ -195,11 +194,36 @@ export class GoogleDriveClient {
         }
     }
 
+    static formatCell(value: any) {
+        if (Array.isArray(value)) {
+            return value.join(',');
+        }
+        if (value instanceof RegExp) {
+            return value.source;
+        }
+        if (value instanceof Set) {
+            return [...value].join(',');
+        }
+        // Return the string representation of the Object Wrappers for Primitive Types
+        if (
+            typeof value === 'object' &&
+            (value instanceof Number ||
+                value instanceof Boolean ||
+                value instanceof String)
+        ) {
+            return value.valueOf();
+        }
+        if (value && typeof value === 'object' && !(value instanceof Date)) {
+            return JSON.stringify(value);
+        }
+        return value;
+    }
+
     async appendToSheet(
         refreshToken: string,
         fileId: string,
         csvContent: Record<string, string>[],
-        itemMap: Record<string, Field | TableCalculation>,
+        itemMap: ItemsMap,
         showTableNames: boolean,
 
         tabName?: string,
@@ -246,7 +270,7 @@ export class GoogleDriveClient {
             sortedFieldIds.map((fieldId) => {
                 // Google sheet doesn't like arrays as values, so we need to convert them to strings
                 const value = row[fieldId];
-                return Array.isArray(value) ? value.join(',') : value;
+                return GoogleDriveClient.formatCell(value);
             }),
         );
 

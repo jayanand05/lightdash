@@ -12,6 +12,7 @@ import {
     OrganizationProject,
     PreviewContentMapping,
     Project,
+    ProjectGroupAccess,
     ProjectMemberProfile,
     ProjectMemberRole,
     ProjectSummary,
@@ -29,6 +30,7 @@ import {
     warehouseClientFromCredentials,
 } from '@lightdash/warehouses';
 import { Knex } from 'knex';
+import uniqWith from 'lodash/uniqWith';
 import { DatabaseError } from 'pg';
 import { LightdashConfig } from '../../config/parseConfig';
 import {
@@ -41,6 +43,7 @@ import {
     OrganizationTableName,
 } from '../../database/entities/organizations';
 import { PinnedListTableName } from '../../database/entities/pinnedList';
+import { ProjectGroupAccessTableName } from '../../database/entities/projectGroupAccess';
 import { DbProjectMembership } from '../../database/entities/projectMemberships';
 import {
     CachedExploresTableName,
@@ -434,7 +437,7 @@ export class ProjectModel {
                 'organizations.organization_id',
             )
             .select<
-                Pick<DbProject, 'name' | 'project_uuid'> &
+                Pick<DbProject, 'name' | 'project_uuid' | 'project_type'> &
                     Pick<DbOrganization, 'organization_uuid'>
             >([
                 `${ProjectTableName}.name`,
@@ -452,6 +455,7 @@ export class ProjectModel {
             organizationUuid: project.organization_uuid,
             projectUuid: project.project_uuid,
             name: project.name,
+            type: project.project_type,
         };
     }
 
@@ -670,10 +674,17 @@ export class ProjectModel {
                 await this.database(CachedExploreTableName)
                     .where('project_uuid', projectUuid)
                     .delete();
+
+                // We don't support multiple explores with the same name at the moment
+                const uniqueExplores = uniqWith(
+                    explores,
+                    (a, b) => a.name === b.name,
+                );
+
                 // cache explores individually
                 await this.database(CachedExploreTableName)
                     .insert(
-                        explores.map((explore) => ({
+                        uniqueExplores.map((explore) => ({
                             project_uuid: projectUuid,
                             name: explore.name,
                             table_names: Object.keys(explore.tables || {}),
@@ -689,7 +700,7 @@ export class ProjectModel {
                 )
                     .insert({
                         project_uuid: projectUuid,
-                        explores: JSON.stringify(explores),
+                        explores: JSON.stringify(uniqueExplores),
                     })
                     .onConflict('project_uuid')
                     .merge()
@@ -902,6 +913,20 @@ export class ProjectModel {
             `,
             { projectUuid, userUuid },
         );
+    }
+
+    async getProjectGroupAccesses(projectUuid: string) {
+        const projectGroupAccesses = await this.database(
+            ProjectGroupAccessTableName,
+        )
+            .select<ProjectGroupAccess[]>({
+                projectUuid: 'project_uuid',
+                groupUuid: 'group_uuid',
+                role: 'role',
+            })
+            .where('project_uuid', projectUuid);
+
+        return projectGroupAccesses;
     }
 
     async findDbtCloudIntegration(
@@ -1256,6 +1281,11 @@ export class ProjectModel {
             await copyChartVersionContent(
                 'saved_queries_version_table_calculations',
                 ['saved_queries_version_table_calculation_id'],
+            );
+            await copyChartVersionContent(
+                'saved_queries_version_custom_dimensions',
+                ['saved_queries_version_custom_dimension_id'],
+                { custom_range: (value: any) => JSON.stringify(value) },
             );
             await copyChartVersionContent('saved_queries_version_sorts', [
                 'saved_queries_version_sort_id',

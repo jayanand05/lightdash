@@ -29,7 +29,7 @@ const StyleOptions = [
 ];
 
 const BigNumberConfigTabs = memo(() => {
-    const { visualizationConfig } = useVisualizationContext();
+    const { visualizationConfig, itemsMap } = useVisualizationContext();
 
     if (!isBigNumberVisualizationConfig(visualizationConfig)) return null;
 
@@ -39,8 +39,9 @@ const BigNumberConfigTabs = memo(() => {
         setBigNumberLabel,
         bigNumberStyle,
         setBigNumberStyle,
+        bigNumberComparisonStyle,
+        setBigNumberComparisonStyle,
         showStyle,
-        availableFields,
         selectedField: selectedFieldId,
         setSelectedField,
         getField,
@@ -69,7 +70,7 @@ const BigNumberConfigTabs = memo(() => {
                     <FieldSelect
                         label="Field"
                         item={selectedField}
-                        items={availableFields}
+                        items={Object.values(itemsMap ?? {})}
                         onChange={(newValue) => {
                             setSelectedField(
                                 newValue ? getItemId(newValue) : undefined,
@@ -107,8 +108,12 @@ const BigNumberConfigTabs = memo(() => {
                             onChange={(newValue) => {
                                 if (!newValue) {
                                     setBigNumberStyle(undefined);
+                                    setBigNumberComparisonStyle(undefined);
                                 } else {
                                     setBigNumberStyle(
+                                        newValue as CompactOrAlias,
+                                    );
+                                    setBigNumberComparisonStyle(
                                         newValue as CompactOrAlias,
                                     );
                                 }
@@ -169,6 +174,27 @@ const BigNumberConfigTabs = memo(() => {
                                     setComparisonLabel(e.currentTarget.value)
                                 }
                             />
+
+                            {showStyle &&
+                                comparisonFormat ===
+                                    ComparisonFormatTypes.RAW && (
+                                    <Select
+                                        label="Format"
+                                        data={StyleOptions}
+                                        value={bigNumberComparisonStyle ?? ''}
+                                        onChange={(newValue) => {
+                                            if (!newValue) {
+                                                setBigNumberComparisonStyle(
+                                                    undefined,
+                                                );
+                                            } else {
+                                                setBigNumberComparisonStyle(
+                                                    newValue as CompactOrAlias,
+                                                );
+                                            }
+                                        }}
+                                    />
+                                )}
                         </>
                     ) : null}
                 </Stack>
